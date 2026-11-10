@@ -14,8 +14,9 @@ AI:   ▶ http_request  Authorization: Bearer {{GITHUB_TOKEN}}
         and hides the token in whatever comes back
 ```
 
-Status: early version (0.1.0). Windows is the tested platform. No dependencies,
-just Node 20 or newer.
+**Status: v0.1 preview, Windows only.** It needs Node 20 or newer and has no
+other dependencies. macOS and Linux are not supported yet (no password window,
+no OS key protection, untested).
 
 ## How it works
 
@@ -127,9 +128,10 @@ The agent gets four tools:
 | `run_with_secrets` | Runs a command with the chosen keys as environment variables. Output is cleaned. |
 | `http_request` | Sends a web request with `{{KEY_NAME}}` filled in. Only to allowed hosts, HTTPS only, redirects not followed, response cleaned. |
 
-This repo is also laid out as a Claude Code plugin (`.claude-plugin/`,
-`commands/`), which adds the `/addKey` and `/keys` commands. The plugin
-packaging has not been tried in a real Claude Code session yet.
+This repo is also laid out as a Claude Code plugin (`.claude-plugin/`), which
+adds the `/addKey` and `/keys` commands. If you open this repo itself in Claude
+Code, `.mcp.json` and `.claude/commands/` give you the server and both commands
+without installing anything.
 
 ## What it protects, and what it does not
 
@@ -160,6 +162,10 @@ Other limits:
 - The password window exists on Windows only. On macOS and Linux use
   `blind-env set NAME` in a terminal. Those platforms are untested.
 - Logging in to websites through a browser (a `login` tool) is not built yet.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
 
 ## Tests
 

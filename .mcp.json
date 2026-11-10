@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "blind-env": {
+      "command": "node",
+      "args": ["src/cli.js", "mcp"]
+    }
+  }
+}
