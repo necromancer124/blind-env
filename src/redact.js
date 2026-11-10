@@ -13,24 +13,30 @@ function variants(value) {
   const buf = Buffer.from(value, 'utf8');
   const b64 = buf.toString('base64');
   const hex = buf.toString('hex');
-  return new Set([
-    value,
-    b64,
-    b64.replace(/=+$/, ''),
-    buf.toString('base64url'),
-    hex,
-    hex.toUpperCase(),
-    encodeURIComponent(value),
-    JSON.stringify(value).slice(1, -1),
-  ]);
+  // text -> how it was encoded ('' means the plain value). First entry wins.
+  const forms = new Map();
+  const add = (text, form) => {
+    if (!forms.has(text)) forms.set(text, form);
+  };
+  add(value, '');
+  add(JSON.stringify(value).slice(1, -1), '');
+  add(b64, 'base64');
+  add(b64.replace(/=+$/, ''), 'base64');
+  add(buf.toString('base64url'), 'base64');
+  add(hex, 'hex');
+  add(hex.toUpperCase(), 'hex');
+  add(encodeURIComponent(value), 'url-encoded');
+  return forms;
 }
 
 export function createRedactor(secrets) {
   const patterns = [];
   for (const [name, value] of Object.entries(secrets)) {
     if (value.length < MIN_REDACT_LENGTH) continue;
-    for (const text of variants(value)) {
-      if (text.length >= MIN_REDACT_LENGTH) patterns.push({ text, name, mask: `***${name}***` });
+    for (const [text, form] of variants(value)) {
+      if (text.length < MIN_REDACT_LENGTH) continue;
+      // The label names the key, and the encoding if it was not the plain value.
+      patterns.push({ text, name, mask: form ? `***${name}:${form}***` : `***${name}***` });
     }
   }
   patterns.sort((a, b) => b.text.length - a.text.length);
@@ -127,13 +133,16 @@ export function mergeHits(...all) {
   return total;
 }
 
-/** A message for whoever ran the command (often an AI), or '' if nothing leaked. */
+/** "API_KEY (2x), DB_PASSWORD (1x)", or '' if nothing was hidden. */
+export function describeHits(hits) {
+  return Object.keys(hits)
+    .map((n) => `${n} (${hits[n]}x)`)
+    .join(', ');
+}
+
+/** A short note for whoever ran the command (often an AI), or '' if nothing was hidden. */
 export function leakMessage(hits) {
-  const names = Object.keys(hits);
-  if (!names.length) return '';
-  const list = names.map((n) => `${n} (${hits[n]}x)`).join(', ');
-  return (
-    `blind-env: SECRET PRINTED - the command wrote the value of ${list} to its output. ` +
-    'It was hidden this time. Change the code so it never prints, logs or echoes a secret.'
-  );
+  const list = describeHits(hits);
+  if (!list) return '';
+  return `blind-env: note: hid the value of ${list} in the output. Logs show the key name instead of the value.`;
 }

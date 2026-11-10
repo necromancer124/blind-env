@@ -9,7 +9,7 @@ import {
   promptTerminal,
   promptWindow,
 } from './prompt.js';
-import { MIN_REDACT_LENGTH, leakMessage } from './redact.js';
+import { MIN_REDACT_LENGTH, describeHits, leakMessage } from './redact.js';
 import { runStreaming } from './run.js';
 import { Vault } from './vault.js';
 
@@ -30,12 +30,16 @@ Usage:
   blind-env rm NAME                      delete a secret
   blind-env allow NAME host [host...]    set the hosts a secret may be sent to
   blind-env allow NAME --clear           allow no hosts
-  blind-env run [--keys A,B] [--strict] -- command
-                                         run a command with secrets as env vars;
-                                         secret values in its output are hidden
-                                         and reported. With --strict (or
+  blind-env check [NAME...]              test that secrets decrypt; shows length
+                                         and a fingerprint, never the value
+  blind-env run [--keys A,B] [--strict] [--quiet] -- command
+                                         run a command with secrets as env vars.
+                                         Printing a secret is fine for logs: the
+                                         output shows ***NAME*** instead of the
+                                         value, plus a one-line note (--quiet
+                                         drops the note). With --strict (or
                                          BLIND_ENV_STRICT=1) printing a secret
-                                         makes the run fail with exit code 97.
+                                         fails the run with exit code 97.
   blind-env mcp                          start the MCP server (for AI agents)
 
 There is no command that prints a secret value, on purpose.
@@ -133,6 +137,7 @@ async function cmdRun(args) {
   const argv = args.slice(split + 1);
   const keysText = takeOption(options, '--keys');
   const strict = takeFlag(options, '--strict') || process.env.BLIND_ENV_STRICT === '1';
+  const quiet = takeFlag(options, '--quiet');
   if (options.length) throw new Error(`unknown option ${options[0]}`);
 
   const vault = Vault.open();
@@ -140,12 +145,14 @@ async function cmdRun(args) {
   const { code, leaks } = await runStreaming(argv, secrets);
   process.exitCode = code;
   const message = leakMessage(leaks);
-  if (message) {
+  if (message && strict) {
+    console.error(
+      `blind-env: ERROR: the command printed the value of ${describeHits(leaks)}. ` +
+        `It was hidden, but --strict fails the run (exit code ${LEAK_EXIT_CODE}).`
+    );
+    process.exitCode = LEAK_EXIT_CODE;
+  } else if (message && !quiet) {
     console.error(message);
-    if (strict) {
-      console.error(`blind-env: failing the run because of --strict (exit code ${LEAK_EXIT_CODE}).`);
-      process.exitCode = LEAK_EXIT_CODE;
-    }
   }
 }
 
@@ -180,6 +187,22 @@ async function main() {
       vault.setAllow(name, clear ? [] : hosts.flatMap((h) => h.split(',')));
       const now = vault.entries.get(name).allow;
       console.log(now.length ? `${name} may be sent to: ${now.join(', ')}` : `${name} may not be sent to any host.`);
+      break;
+    }
+    case 'check': {
+      const vault = Vault.open();
+      const names = args.length ? args : [...vault.entries.keys()];
+      if (!names.length) console.log('The vault is empty.');
+      const width = Math.max(0, ...names.map((n) => n.length));
+      for (const name of names) {
+        try {
+          const info = vault.inspect(name);
+          console.log(`${name.padEnd(width)}  ok      length ${info.length}  fingerprint ${info.fingerprint}`);
+        } catch (err) {
+          console.log(`${name.padEnd(width)}  FAILED  ${err.message}`);
+          process.exitCode = 1;
+        }
+      }
       break;
     }
     case 'run':

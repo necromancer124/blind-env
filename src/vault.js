@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { newMasterKey, newVaultId, open, seal } from './crypto.js';
@@ -117,6 +118,17 @@ export class Vault {
     if (!entry) throw new Error(`no key named ${name}`);
     entry.allow = normalizeHosts(hosts);
     this.save();
+  }
+
+  /**
+   * Facts about a value that are safe to show: its length and a fingerprint.
+   * The fingerprint is keyed with the vault key, so it cannot be used to guess
+   * the value. Same value in the same vault gives the same fingerprint.
+   */
+  inspect(name) {
+    const value = this.reveal([name])[name];
+    const mac = createHmac('sha256', this.key()).update('blind-env:fingerprint:').update(value).digest('hex');
+    return { length: value.length, fingerprint: mac.slice(0, 8) };
   }
 
   /**

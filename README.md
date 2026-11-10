@@ -39,9 +39,10 @@ DB_PASSWORD=enc:v1:Lw91…
   your Windows account with DPAPI.
 - **There is no command that prints a value.** Secrets only ever go to two
   places: the environment of a program you run, or an outgoing web request.
-- **Output is cleaned.** If a program prints a secret, it shows up as
-  `***GITHUB_TOKEN***`. The plain value and its base64, hex and URL-encoded
-  forms are caught.
+- **Logs show the key name, not the value.** A program may print a secret
+  (handy for debugging): it shows up as `***GITHUB_TOKEN***`. The base64, hex
+  and URL-encoded forms are caught too and labelled, like
+  `***GITHUB_TOKEN:base64***`.
 - **Each key has a list of hosts** it may be sent to. A key with no hosts
   cannot be used in web requests at all.
 
@@ -74,23 +75,33 @@ blind-env run -- node app.js
 `app.js` reads `process.env.GITHUB_TOKEN` as usual. Add `--keys A,B` to pass
 only some keys.
 
-### When a program prints a secret
+### Debugging: printing a secret is allowed
 
-The value is hidden, and blind-env adds an error line so whoever ran the
-command (often an AI) knows it did something wrong:
+Your code can log a secret like any other variable. The log shows which key
+it was instead of the value, and how it was encoded:
 
 ```
-value: ***GITHUB_TOKEN***
-blind-env: SECRET PRINTED - the command wrote the value of GITHUB_TOKEN (1x) to its output. ...
+[debug] connecting with token ***GITHUB_TOKEN*** | as base64: ***GITHUB_TOKEN:base64***
+blind-env: note: hid the value of GITHUB_TOKEN (2x) in the output. Logs show the key name instead of the value.
 ```
 
-Add `--strict` to make that a real failure (exit code 97):
+- `--quiet` drops the note line.
+- `--strict` treats a printed secret as an error and fails the run with exit
+  code 97. Set `BLIND_ENV_STRICT=1` to make every run strict.
+
+To check that a secret is stored and is the value you expect, without seeing
+it:
 
 ```bash
-blind-env run --strict -- node app.js
+blind-env check
+```
+```
+GITHUB_TOKEN  ok      length 40  fingerprint 04abe0b8
 ```
 
-To make every run strict, set the environment variable `BLIND_ENV_STRICT=1`.
+The fingerprint stays the same until the value changes, so you can tell
+"still the old token" from "the new one" at a glance. It is made with the
+vault key, so it cannot be used to guess the value.
 
 The `.aienv` file also starts with a short note for AI agents: use keys by
 name, never print or decode a value.

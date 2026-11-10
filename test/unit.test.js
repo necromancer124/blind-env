@@ -123,7 +123,7 @@ test('redact: plain value and common encodings', () => {
   const b64 = Buffer.from(secret).toString('base64');
   const hex = Buffer.from(secret).toString('hex');
   const out = r.all(`a ${secret} b ${b64} c ${hex} d ${encodeURIComponent(secret)} e`);
-  assert.equal(out, 'a ***PW*** b ***PW*** c ***PW*** d ***PW*** e');
+  assert.equal(out, 'a ***PW*** b ***PW:base64*** c ***PW:hex*** d ***PW:url-encoded*** e');
 });
 
 test('redact: a secret split across chunks, at every possible split point', () => {
