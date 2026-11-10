@@ -107,6 +107,16 @@ test('cli: run passes secrets to the program and hides them in its output', () =
   assert.match(r.stderr, /note: hid the value of API_KEY \(3x\)/);
 });
 
+test('cli: a secret printed in two parts with a pause is still hidden', () => {
+  const code =
+    'const v = process.env.API_KEY; process.stdout.write(v.slice(0, 11));' +
+    ' setTimeout(() => console.log(v.slice(11)), 300);';
+  const r = cli(['run', '--', process.execPath, '-e', code]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout.trim(), '***API_KEY***');
+  assert.ok(!r.stdout.includes(SECRET.slice(0, 11)));
+});
+
 test('cli: --strict turns a printed secret into a failed run; clean programs are untouched', () => {
   fs.writeFileSync(path.join(project, 'leak.js'), "console.log('token is ' + process.env.API_KEY);\n");
   fs.writeFileSync(
@@ -271,7 +281,7 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
     assert.equal(ok.isError, false, ok.text);
     assert.equal(lastRequest.headers.authorization, `Bearer ${SECRET}`);
     assert.equal(lastRequest.body, `{"token":"${SECRET}"}`);
-    assert.match(ok.text, /^HTTP 200/);
+    assert.match(ok.text, /^blind-env: note: hid the value of API_KEY \(\d+x\).*\nHTTP 200/);
     assert.match(ok.text, /Bearer \*\*\*API_KEY\*\*\*/);
     assert.match(ok.text, /x-echo-auth: Bearer \*\*\*API_KEY\*\*\*/);
 

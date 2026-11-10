@@ -209,7 +209,8 @@ export async function serveMcp() {
         .join('\n');
       const cut = res.truncated ? '\n[body cut: too long]' : '';
       const note = res.note ? `\n[${res.note}]` : '';
-      return `HTTP ${res.status}${note}\n${headers}\n\n${res.body}${cut}`;
+      const leak = leakMessage(res.leaks);
+      return `${leak ? `${leak}\n` : ''}HTTP ${res.status}${note}\n${headers}\n\n${res.body}${cut}`;
     },
   };
 

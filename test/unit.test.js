@@ -164,6 +164,28 @@ test('vault: values shorter than 8 characters are refused unless allowed', () =>
   assert.equal(vault.reveal(['PIN']).PIN, '1234');
 });
 
+test('redact stream: a pause in the middle of a secret does not let the first part out', async () => {
+  const { createStreamRedactor } = await import('../src/redact.js');
+  const secret = 'sk-live-ABCDEFGH1234';
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  let out = '';
+  const s = createStreamRedactor({ KEY: secret }, (t) => (out += t), 10);
+  s.write(Buffer.from('token: ' + secret.slice(0, 9)));
+  await wait(50); // longer than the idle time
+  assert.equal(out, 'token: ', 'the start of the secret must still be held back');
+  s.write(Buffer.from(secret.slice(9) + ' done\n'));
+  s.end();
+  assert.equal(out, 'token: ***KEY*** done\n');
+
+  // A prompt that is not the start of a secret is shown while the program waits.
+  let shown = '';
+  const p = createStreamRedactor({ KEY: secret }, (t) => (shown += t), 10);
+  p.write(Buffer.from('Password: '));
+  await wait(50);
+  assert.equal(shown, 'Password: ');
+  p.end();
+});
+
 test('redact: very short values are left alone', () => {
   assert.equal(createRedactor({ PIN: 'abc' }).all('abc abcabc'), 'abc abcabc');
 });

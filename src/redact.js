@@ -89,9 +89,26 @@ export function createRedactor(secrets) {
       buf += text;
       return drain(buf.length - hold);
     },
-    /** Returns everything still held back. */
+    /** Returns everything still held back. Only for the very end of the output. */
     flush() {
       return drain(buf.length);
+    },
+    /**
+     * For when the program goes quiet: returns what is held back, EXCEPT an
+     * ending that could be the start of a secret. That part waits for more
+     * output (or the end), so a value written in two parts with a pause in
+     * between is still caught.
+     */
+    flushIdle() {
+      let keepFrom = buf.length;
+      for (let j = Math.max(0, buf.length - hold); j < buf.length; j++) {
+        const tail = buf.slice(j);
+        if (patterns.some((p) => p.text.startsWith(tail))) {
+          keepFrom = j;
+          break;
+        }
+      }
+      return drain(keepFrom);
     },
     /** Redact a complete string in one go. */
     all(text) {
@@ -122,9 +139,10 @@ export function createStreamRedactor(secrets, write, idleMs = 100) {
     write(chunk) {
       emit(redactor.push(decoder.write(chunk)));
       // If the program goes quiet (for example it is waiting for input),
-      // show what we are holding instead of hiding a prompt forever.
+      // show what we are holding instead of hiding a prompt forever, but
+      // never an ending that could be the first part of a secret.
       clearTimeout(timer);
-      timer = setTimeout(() => emit(redactor.flush()), idleMs);
+      timer = setTimeout(() => emit(redactor.flushIdle()), idleMs);
     },
     end() {
       clearTimeout(timer);

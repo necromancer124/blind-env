@@ -4,7 +4,7 @@
 // may only be sent to the hosts on its allow list, redirects are not followed,
 // and the response is redacted before it is returned.
 
-import { createRedactor } from './redact.js';
+import { createRedactor, mergeHits } from './redact.js';
 import { hostAllowed } from './vault.js';
 
 const PLACEHOLDER = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
@@ -55,12 +55,20 @@ export async function httpRequest(vault, { url, method = 'GET', headers = {}, bo
     signal: AbortSignal.timeout(timeoutMs),
   });
 
-  const redactor = createRedactor(secrets);
-  const text = redactor.all(await res.text());
+  // Each piece is cleaned on its own; the hit counts are added up for the note.
+  const counts = [];
+  const clean = (piece) => {
+    const redactor = createRedactor(secrets);
+    const out = redactor.finish(piece);
+    counts.push(redactor.hits());
+    return out;
+  };
+  const text = clean(await res.text());
   const resHeaders = {};
-  for (const [k, v] of res.headers) resHeaders[k] = redactor.all(v);
+  for (const [k, v] of res.headers) resHeaders[k] = clean(v);
 
   return {
+    leaks: mergeHits(...counts),
     status: res.status,
     headers: resHeaders,
     body: text.length > maxChars ? text.slice(0, maxChars) : text,

@@ -125,7 +125,7 @@ it:
 blind-env check
 ```
 ```
-GITHUB_TOKEN  ok      length 40  fingerprint 04abe0b8
+GITHUB_TOKEN  ok      length 40  fingerprint 7c2e91d4
 ```
 
 The fingerprint stays the same until the value changes, so you can tell
@@ -159,7 +159,8 @@ The agent gets four tools:
 This repo is also laid out as a Claude Code plugin (`.claude-plugin/`), which
 adds the `/addKey` and `/keys` commands. If you open this repo itself in Claude
 Code, `.mcp.json` and `.claude/commands/` give you the server and both commands
-without installing anything.
+without installing anything. Start the session in the repo folder itself: a
+session that starts elsewhere does not load them until it moves into the repo.
 
 ## What it protects, and what it does not
 
