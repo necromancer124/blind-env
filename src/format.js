@@ -74,6 +74,8 @@ export function serializeVault(vault) {
     `# blind-env vault v1 id=${vault.id}`,
     '# Names and notes are readable. Values are encrypted; the key is NOT in this folder.',
     '# Edit with the blind-env tool, not by hand.',
+    '# AI agents: use these keys by NAME ("blind-env run -- <command>" or the blind-env tools).',
+    '# Never print, log, decode or copy a value, and never ask the user to paste one in chat.',
   ];
   for (const e of vault.entries.values()) {
     out.push('');

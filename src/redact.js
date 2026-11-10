@@ -30,13 +30,14 @@ export function createRedactor(secrets) {
   for (const [name, value] of Object.entries(secrets)) {
     if (value.length < MIN_REDACT_LENGTH) continue;
     for (const text of variants(value)) {
-      if (text.length >= MIN_REDACT_LENGTH) patterns.push({ text, mask: `***${name}***` });
+      if (text.length >= MIN_REDACT_LENGTH) patterns.push({ text, name, mask: `***${name}***` });
     }
   }
   patterns.sort((a, b) => b.text.length - a.text.length);
   const hold = patterns.length ? patterns[0].text.length - 1 : 0;
 
   let buf = '';
+  const hits = {}; // key name -> how many times it was hidden
 
   // Redact buf up to `limit`. A match that starts before the limit is always
   // consumed whole. Text after the limit stays in buf, untouched, for later.
@@ -59,6 +60,7 @@ export function createRedactor(secrets) {
         break;
       }
       out += buf.slice(i, at) + hit.mask;
+      hits[hit.name] = (hits[hit.name] ?? 0) + 1;
       i = at + hit.text.length;
     }
     buf = buf.slice(i);
@@ -82,6 +84,10 @@ export function createRedactor(secrets) {
     finish(text) {
       buf += text;
       return drain(buf.length);
+    },
+    /** Which keys were hidden so far, and how many times. */
+    hits() {
+      return { ...hits };
     },
   };
 }
@@ -108,5 +114,26 @@ export function createStreamRedactor(secrets, write, idleMs = 100) {
       clearTimeout(timer);
       emit(redactor.finish(decoder.end()));
     },
+    hits: () => redactor.hits(),
   };
+}
+
+/** Add up hit counts from several redactors. */
+export function mergeHits(...all) {
+  const total = {};
+  for (const hits of all) {
+    for (const [name, n] of Object.entries(hits)) total[name] = (total[name] ?? 0) + n;
+  }
+  return total;
+}
+
+/** A message for whoever ran the command (often an AI), or '' if nothing leaked. */
+export function leakMessage(hits) {
+  const names = Object.keys(hits);
+  if (!names.length) return '';
+  const list = names.map((n) => `${n} (${hits[n]}x)`).join(', ');
+  return (
+    `blind-env: SECRET PRINTED - the command wrote the value of ${list} to its output. ` +
+    'It was hidden this time. Change the code so it never prints, logs or echoes a secret.'
+  );
 }

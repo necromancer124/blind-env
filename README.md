@@ -74,6 +74,27 @@ blind-env run -- node app.js
 `app.js` reads `process.env.GITHUB_TOKEN` as usual. Add `--keys A,B` to pass
 only some keys.
 
+### When a program prints a secret
+
+The value is hidden, and blind-env adds an error line so whoever ran the
+command (often an AI) knows it did something wrong:
+
+```
+value: ***GITHUB_TOKEN***
+blind-env: SECRET PRINTED - the command wrote the value of GITHUB_TOKEN (1x) to its output. ...
+```
+
+Add `--strict` to make that a real failure (exit code 97):
+
+```bash
+blind-env run --strict -- node app.js
+```
+
+To make every run strict, set the environment variable `BLIND_ENV_STRICT=1`.
+
+The `.aienv` file also starts with a short note for AI agents: use keys by
+name, never print or decode a value.
+
 Other commands: `blind-env rm NAME`, `blind-env allow NAME host…`,
 `blind-env allow NAME --clear`, `blind-env help`.
 

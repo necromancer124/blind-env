@@ -1,7 +1,7 @@
 // Run a command with secrets in its environment, redacting its output.
 
 import { spawn } from 'node:child_process';
-import { createRedactor, createStreamRedactor } from './redact.js';
+import { createRedactor, createStreamRedactor, mergeHits } from './redact.js';
 
 function quoteForCmd(arg) {
   if (arg !== '' && /^[A-Za-z0-9_\-./:=\\@+,]+$/.test(arg)) return arg;
@@ -18,7 +18,7 @@ function spawnArgv(argv, options) {
 
 /**
  * For the command line: output is streamed to the terminal as it arrives.
- * Resolves with the exit code.
+ * Resolves with { code, leaks }: the exit code and which keys the program printed.
  */
 export function runStreaming(argv, secrets, { cwd } = {}) {
   return new Promise((resolve, reject) => {
@@ -35,7 +35,7 @@ export function runStreaming(argv, secrets, { cwd } = {}) {
     child.on('close', (code, signal) => {
       out.end();
       err.end();
-      resolve(code ?? (signal ? 1 : 0));
+      resolve({ code: code ?? (signal ? 1 : 0), leaks: mergeHits(out.hits(), err.hits()) });
     });
   });
 }
@@ -74,12 +74,13 @@ export function runCaptured(command, secrets, { cwd, timeoutMs = 120_000, maxCha
       clearTimeout(timer);
       // Redact first, cut second: cutting first could slice a secret in half
       // and let the remaining half through.
-      let output = createRedactor(secrets).finish(raw);
+      const redactor = createRedactor(secrets);
+      let output = redactor.finish(raw);
       if (output.length > maxChars) {
         output = output.slice(0, maxChars);
         truncated = true;
       }
-      resolve({ exitCode, output, truncated, timedOut, startError });
+      resolve({ exitCode, output, truncated, timedOut, startError, leaks: redactor.hits() });
     };
 
     child.on('error', (e) => done(null, e.message));

@@ -91,6 +91,56 @@ test('cli: run passes secrets to the program and hides them in its output', () =
   assert.match(r.stderr, /err=\*\*\*API_KEY\*\*\*/);
   assert.match(r.stdout, /other=unset/); // only the keys asked for are passed
   assert.ok(!(r.stdout + r.stderr).includes(SECRET));
+  // The leak is reported, but without --strict the program's own exit code is kept.
+  assert.match(r.stderr, /SECRET PRINTED - the command wrote the value of API_KEY \(3x\)/);
+});
+
+test('cli: --strict turns a printed secret into a failed run; clean programs are untouched', () => {
+  fs.writeFileSync(path.join(project, 'leak.js'), "console.log('token is ' + process.env.API_KEY);\n");
+  fs.writeFileSync(
+    path.join(project, 'clean.js'),
+    "console.log('key is set: ' + Boolean(process.env.API_KEY) + ', length ' + process.env.API_KEY.length);\n"
+  );
+
+  let r = cli(['run', '--strict', '--', process.execPath, 'leak.js']);
+  assert.equal(r.status, 97, r.stderr);
+  assert.match(r.stdout, /token is \*\*\*API_KEY\*\*\*/);
+  assert.match(r.stderr, /SECRET PRINTED/);
+  assert.ok(!(r.stdout + r.stderr).includes(SECRET));
+
+  r = spawnSync(process.execPath, [CLI, 'run', '--', process.execPath, 'leak.js'], {
+    cwd: project,
+    env: { ...env, BLIND_ENV_STRICT: '1' },
+    encoding: 'utf8',
+  });
+  assert.equal(r.status, 97, r.stderr);
+
+  r = cli(['run', '--strict', '--', process.execPath, 'clean.js']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout.trim(), `key is set: true, length ${SECRET.length}`);
+  assert.equal(r.stderr, '');
+});
+
+test('cli: run with a key that does not exist fails before starting anything', () => {
+  const r = cli(['run', '--keys', 'NOT_A_KEY', '--', process.execPath, 'clean.js']);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /no key named NOT_A_KEY/);
+  assert.equal(r.stdout, '');
+});
+
+test('vault file: tells AI agents the rules, and a hand-edited value is rejected', () => {
+  const file = path.join(project, '.aienv');
+  const original = fs.readFileSync(file, 'utf8');
+  assert.match(original, /AI agents: use these keys by NAME/);
+
+  // Swap the two encrypted values: each one must refuse to open under the other name.
+  const a = /^API_KEY=(.*)$/m.exec(original)[1];
+  const b = /^OTHER_KEY=(.*)$/m.exec(original)[1];
+  fs.writeFileSync(file, original.replace(a, 'TEMP').replace(b, a).replace('TEMP', b));
+  const r = cli(['run', '--', process.execPath, 'clean.js']);
+  fs.writeFileSync(file, original);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /cannot decrypt/);
 });
 
 test('cli: allow and rm', () => {
@@ -143,7 +193,7 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
     assert.match(list.text, /API_KEY\n {2}description: test api key\n {2}allowed hosts: 127\.0\.0\.1/);
 
     const run = await call('run_with_secrets', { command: `"${process.execPath}" child.js`, keys: ['API_KEY'] });
-    assert.match(run.text, /^exit code 7/);
+    assert.match(run.text, /^blind-env: SECRET PRINTED .*API_KEY \(3x\).*\nexit code 7\n/);
     assert.match(run.text, /plain=\*\*\*API_KEY\*\*\*/);
     assert.match(run.text, /err=\*\*\*API_KEY\*\*\*/);
 

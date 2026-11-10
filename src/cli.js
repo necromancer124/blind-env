@@ -9,11 +9,12 @@ import {
   promptTerminal,
   promptWindow,
 } from './prompt.js';
-import { MIN_REDACT_LENGTH } from './redact.js';
+import { MIN_REDACT_LENGTH, leakMessage } from './redact.js';
 import { runStreaming } from './run.js';
 import { Vault } from './vault.js';
 
 const VERSION = '0.1.0';
+const LEAK_EXIT_CODE = 97;
 
 const HELP = `blind-env ${VERSION} - a .env file for AI agents
 
@@ -29,8 +30,12 @@ Usage:
   blind-env rm NAME                      delete a secret
   blind-env allow NAME host [host...]    set the hosts a secret may be sent to
   blind-env allow NAME --clear           allow no hosts
-  blind-env run [--keys A,B] -- command  run a command with secrets as env vars;
+  blind-env run [--keys A,B] [--strict] -- command
+                                         run a command with secrets as env vars;
                                          secret values in its output are hidden
+                                         and reported. With --strict (or
+                                         BLIND_ENV_STRICT=1) printing a secret
+                                         makes the run fail with exit code 97.
   blind-env mcp                          start the MCP server (for AI agents)
 
 There is no command that prints a secret value, on purpose.
@@ -127,11 +132,21 @@ async function cmdRun(args) {
   const options = args.slice(0, split);
   const argv = args.slice(split + 1);
   const keysText = takeOption(options, '--keys');
+  const strict = takeFlag(options, '--strict') || process.env.BLIND_ENV_STRICT === '1';
   if (options.length) throw new Error(`unknown option ${options[0]}`);
 
   const vault = Vault.open();
   const secrets = vault.reveal(keysText ? keysText.split(',').filter(Boolean) : undefined);
-  process.exitCode = await runStreaming(argv, secrets);
+  const { code, leaks } = await runStreaming(argv, secrets);
+  process.exitCode = code;
+  const message = leakMessage(leaks);
+  if (message) {
+    console.error(message);
+    if (strict) {
+      console.error(`blind-env: failing the run because of --strict (exit code ${LEAK_EXIT_CODE}).`);
+      process.exitCode = LEAK_EXIT_CODE;
+    }
+  }
 }
 
 async function main() {

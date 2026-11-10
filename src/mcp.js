@@ -5,7 +5,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { httpRequest } from './http.js';
 import { PromptCancelled, canPromptInWindow, describeKeyForPrompt, promptWindow } from './prompt.js';
-import { MIN_REDACT_LENGTH } from './redact.js';
+import { MIN_REDACT_LENGTH, leakMessage } from './redact.js';
 import { runCaptured } from './run.js';
 import { Vault } from './vault.js';
 
@@ -156,7 +156,8 @@ export async function serveMcp() {
       if (result.startError) throw new Error(`could not start the command: ${result.startError}`);
       const status = result.timedOut ? 'timed out (stopped)' : `exit code ${result.exitCode}`;
       const cut = result.truncated ? '\n[output cut: too long]' : '';
-      return `${status}\n--- output ---\n${result.output}${cut}`;
+      const leak = leakMessage(result.leaks);
+      return `${leak ? `${leak}\n` : ''}${status}\n--- output ---\n${result.output}${cut}`;
     },
 
     async http_request(args) {
