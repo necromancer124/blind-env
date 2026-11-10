@@ -195,6 +195,11 @@ session that starts elsewhere does not load them until it moves into the repo.
 - a web page tricking the AI into sending a key to the wrong site through
   `http_request`.
 
+An allowed site is trusted with the key. If you allow `api.github.com`, the AI
+could still send the token there in a way that stores it, for example inside a
+new gist. Allow only the API a key is for, and keep `run_with_secrets` and
+`http_request` approvals in Claude Code switched on for anything sensitive.
+
 **It does not protect against an AI that has a shell and is trying to steal a
 secret.** An agent that can run any command as you can write a program that
 scrambles the secret before printing it (so the cleaner misses it), sends it to
@@ -224,6 +229,9 @@ Other limits:
 MIT, see [LICENSE](LICENSE).
 
 ## Tests
+
+The full manual test, written as a prompt for an AI session, is in
+[docs/TEST-PROMPT.md](docs/TEST-PROMPT.md). Automatic tests:
 
 ```bash
 npm test

@@ -193,6 +193,7 @@ export async function serveMcp() {
           describeKeyForPrompt({
             description: description ?? old?.description,
             allow: allow ?? old?.allow,
+            previousAllow: old ? vault.trustedAllow(name) : [],
             replacing: Boolean(old),
           }),
           180

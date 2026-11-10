@@ -165,11 +165,16 @@ export class Vault {
   /**
    * Facts about a value that are safe to show: its length and a fingerprint.
    * The fingerprint is keyed with the vault key, so it cannot be used to guess
-   * the value. Same value in the same vault gives the same fingerprint.
+   * the value. It includes the key name, so it only tells "same value as
+   * before" for one key: a test key holding a guess can never match another
+   * key's fingerprint (that would let a program guess values offline).
    */
   inspect(name) {
     const value = this.reveal([name])[name];
-    const mac = createHmac('sha256', this.key()).update('blind-env:fingerprint:').update(value).digest('hex');
+    const mac = createHmac('sha256', this.key())
+      .update(`blind-env:fingerprint:v2:${name}:`)
+      .update(value)
+      .digest('hex');
     return { length: value.length, fingerprint: mac.slice(0, 8) };
   }
 

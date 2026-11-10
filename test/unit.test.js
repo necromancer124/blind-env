@@ -115,6 +115,25 @@ test('vault: set, list, reveal, remove; the file never contains the value', () =
   assert.throws(() => reloaded.set('EMPTY', ''), /empty/);
 });
 
+test('vault: fingerprints are stable per key but differ between keys with the same value', () => {
+  const vault = Vault.init(tmpProject());
+  vault.set('A_KEY', 'same-value-123');
+  vault.set('B_KEY', 'same-value-123');
+  const a = vault.inspect('A_KEY').fingerprint;
+  assert.notEqual(a, vault.inspect('B_KEY').fingerprint);
+  assert.equal(Vault.open(path.dirname(vault.file)).inspect('A_KEY').fingerprint, a);
+  vault.set('A_KEY', 'other-value-456');
+  assert.notEqual(vault.inspect('A_KEY').fingerprint, a);
+});
+
+test('password window text points out newly added sites', async () => {
+  const { describeKeyForPrompt } = await import('../src/prompt.js');
+  const text = describeKeyForPrompt({ allow: ['a.com', 'evil.com'], previousAllow: ['a.com'], replacing: true });
+  assert.match(text, /NEW: evil\.com/);
+  assert.ok(!/NEW: a\.com/.test(text));
+  assert.ok(!/NEW/.test(describeKeyForPrompt({ allow: ['a.com'], previousAllow: ['a.com'], replacing: true })));
+});
+
 test('vault: found from a sub-folder', () => {
   const dir = tmpProject();
   Vault.init(dir);

@@ -308,10 +308,14 @@ export function confirmDelete(name, { description } = {}) {
   });
 }
 
-export function describeKeyForPrompt({ description, allow, replacing }) {
+export function describeKeyForPrompt({ description, allow, previousAllow = [], replacing }) {
   const lines = [];
   if (description) lines.push(description);
-  lines.push(allow?.length ? `Can be sent to: ${allow.join(', ')}` : 'Not allowed in web requests (no hosts set).');
+  const added = (allow ?? []).filter((h) => !previousAllow.includes(h));
+  const newNote = replacing && added.length ? `  (NEW: ${added.join(', ')}, only save if you asked for this)` : '';
+  lines.push(
+    allow?.length ? `Can be sent to: ${allow.join(', ')}${newNote}` : 'Not allowed in web requests (no hosts set).'
+  );
   if (replacing) lines.push('This replaces the value saved before.');
   return lines.join('\n');
 }

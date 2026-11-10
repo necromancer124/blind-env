@@ -102,6 +102,7 @@ async function cmdSet(args) {
       describeKeyForPrompt({
         description: description ?? old?.description,
         allow: allow ?? old?.allow,
+        previousAllow: old ? vault.trustedAllow(name) : [],
         replacing: Boolean(old),
       })
     );
