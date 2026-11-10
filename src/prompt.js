@@ -18,9 +18,9 @@ export function canPromptInTerminal() {
 }
 
 export function canPromptInWindow() {
-  // BLIND_ENV_NO_WINDOW=1 can only take a permission away (nothing gets
+  // FACEDOWN_NO_WINDOW=1 can only take a permission away (nothing gets
   // approved without a window), so it is safe for tests and headless use.
-  return process.platform === 'win32' && process.env.BLIND_ENV_NO_WINDOW !== '1';
+  return process.platform === 'win32' && process.env.FACEDOWN_NO_WINDOW !== '1';
 }
 
 export function promptTerminal(label) {
@@ -58,12 +58,12 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
-$name    = $env:BLIND_ENV_PROMPT_NAME
-$details = $env:BLIND_ENV_PROMPT_DETAILS
-$timeout = [int]$env:BLIND_ENV_PROMPT_TIMEOUT
+$name    = $env:FACEDOWN_PROMPT_NAME
+$details = $env:FACEDOWN_PROMPT_DETAILS
+$timeout = [int]$env:FACEDOWN_PROMPT_TIMEOUT
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'blind-env'
+$form.Text = 'facedown'
 $form.ClientSize = New-Object System.Drawing.Size(440, 214)
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
@@ -139,9 +139,9 @@ export function promptWindow(name, details = '', timeoutSeconds = 300) {
       {
         env: {
           ...process.env,
-          BLIND_ENV_PROMPT_NAME: name,
-          BLIND_ENV_PROMPT_DETAILS: details,
-          BLIND_ENV_PROMPT_TIMEOUT: String(timeoutSeconds),
+          FACEDOWN_PROMPT_NAME: name,
+          FACEDOWN_PROMPT_DETAILS: details,
+          FACEDOWN_PROMPT_TIMEOUT: String(timeoutSeconds),
         },
         stdio: ['ignore', 'pipe', 'ignore'],
       }
@@ -165,13 +165,13 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
-$titleText = $env:BLIND_ENV_CONFIRM_TITLE
-$details   = $env:BLIND_ENV_CONFIRM_DETAILS
-$okText    = $env:BLIND_ENV_CONFIRM_OK
-$timeout   = [int]$env:BLIND_ENV_PROMPT_TIMEOUT
+$titleText = $env:FACEDOWN_CONFIRM_TITLE
+$details   = $env:FACEDOWN_CONFIRM_DETAILS
+$okText    = $env:FACEDOWN_CONFIRM_OK
+$timeout   = [int]$env:FACEDOWN_PROMPT_TIMEOUT
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'blind-env'
+$form.Text = 'facedown'
 $form.ClientSize = New-Object System.Drawing.Size(460, 200)
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
@@ -232,10 +232,10 @@ export function confirmWindow({ title, details, okText = 'Allow', timeoutSeconds
       {
         env: {
           ...process.env,
-          BLIND_ENV_CONFIRM_TITLE: title,
-          BLIND_ENV_CONFIRM_DETAILS: details,
-          BLIND_ENV_CONFIRM_OK: okText,
-          BLIND_ENV_PROMPT_TIMEOUT: String(timeoutSeconds),
+          FACEDOWN_CONFIRM_TITLE: title,
+          FACEDOWN_CONFIRM_DETAILS: details,
+          FACEDOWN_CONFIRM_OK: okText,
+          FACEDOWN_PROMPT_TIMEOUT: String(timeoutSeconds),
         },
         stdio: ['ignore', 'pipe', 'ignore'],
       }

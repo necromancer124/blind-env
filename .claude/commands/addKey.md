@@ -1,13 +1,13 @@
 ---
-description: Add a secret to the blind-env vault (you type the value in a private window, not in chat)
+description: Add a secret to the facedown vault (you type the value in a private window, not in chat)
 argument-hint: NAME [what it is for]
 ---
 
-The user wants to add a secret to their blind-env vault: $ARGUMENTS
+The user wants to add a secret to their facedown vault: $ARGUMENTS
 
 The first word is the key name. Anything after it is the description.
 
-Call the blind-env `add_key` tool with that name and description. If it is clear which
+Call the facedown `add_key` tool with that name and description. If it is clear which
 website or API the secret belongs to, also pass `allow` with that host (for example
 `["api.github.com"]`) and tell the user which hosts you set.
 

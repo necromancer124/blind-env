@@ -1,6 +1,6 @@
-// The .aienv file format.
+// The .env.facedown file format (called .aienv when the project was blind-env).
 //
-//   # blind-env vault v1 id=<vault id>
+//   # facedown vault v1 id=<vault id>
 //
 //   # @desc GitHub token for the API
 //   # @allow github.com,api.github.com
@@ -9,11 +9,14 @@
 // Names, descriptions and allowed hosts are plain text (the AI may read them).
 // Values are always encrypted.
 
-export const FILE_NAME = '.aienv';
+export const FILE_NAME = '.env.facedown';
+/** The file name from before the rename (blind-env). Still found and read. */
+export const LEGACY_FILE_NAME = '.aienv';
 export const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export const SEALED_RE = /^enc:v[12]:/;
 
-const HEADER_RE = /^blind-env vault v(\d+) id=([A-Za-z0-9_-]+)$/;
+// "blind-env" is the project's earlier name; vaults made by it are still read.
+const HEADER_RE = /^(?:facedown|blind-env) vault v(\d+) id=([A-Za-z0-9_-]+)$/;
 
 export function parseVault(text) {
   const vault = { id: null, entries: new Map() };
@@ -57,7 +60,7 @@ export function parseVault(text) {
       // Never echo the value: it may be a plain-text secret pasted by mistake.
       throw new Error(
         `${where}: the value of ${name} is not encrypted. ` +
-          `Delete that line and add the key with "blind-env set ${name}".`
+          `Delete that line and add the key with "facedown set ${name}".`
       );
     }
     vault.entries.set(name, { name, sealed, description, allow });
@@ -65,16 +68,16 @@ export function parseVault(text) {
     allow = [];
   }
 
-  if (!vault.id) throw new Error(`${FILE_NAME}: missing "# blind-env vault v1 id=..." header`);
+  if (!vault.id) throw new Error(`${FILE_NAME}: missing "# facedown vault v1 id=..." header`);
   return vault;
 }
 
 export function serializeVault(vault) {
   const out = [
-    `# blind-env vault v1 id=${vault.id}`,
+    `# facedown vault v1 id=${vault.id}`,
     '# Names and notes are readable. Values are encrypted; the key is NOT in this folder.',
-    '# Edit with the blind-env tool, not by hand.',
-    '# AI agents: use these keys by NAME ("blind-env run -- <command>" or the blind-env tools).',
+    '# Edit with the facedown tool, not by hand.',
+    '# AI agents: use these keys by NAME ("facedown run -- <command>" or the facedown tools).',
     '# Never print, log, decode or copy a value, and never ask the user to paste one in chat.',
   ];
   for (const e of vault.entries.values()) {

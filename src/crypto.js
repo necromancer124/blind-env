@@ -3,7 +3,7 @@
 // The vault id, the key name and (since v2) the key's allowed hosts are bound
 // in as additional data. So a ciphertext cannot be copied onto another name or
 // into another vault, and editing the "# @allow" line by hand makes the value
-// impossible to decrypt: only blind-env can change which sites a key may go to.
+// impossible to decrypt: only facedown can change which sites a key may go to.
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 

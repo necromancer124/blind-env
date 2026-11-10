@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="blind-env: a .env file for AI agents">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="facedown: a .env file for AI agents">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0b1220"/>
@@ -11,16 +11,21 @@
   </defs>
   <rect width="1280" height="320" rx="28" fill="url(#bg)"/>
 
-  <!-- icon: an eye with a slash through it -->
+  <!-- icon: a playing card, face down -->
   <g transform="translate(170 160)">
     <rect x="-90" y="-90" width="180" height="180" rx="40" fill="url(#icon)"/>
-    <path d="M -58 0 Q 0 -48 58 0 Q 0 48 -58 0 Z" fill="none" stroke="#0b1220" stroke-width="10" stroke-linejoin="round"/>
-    <circle r="17" fill="#0b1220"/>
-    <line x1="-52" y1="-46" x2="52" y2="46" stroke="url(#icon)" stroke-width="22" stroke-linecap="round"/>
-    <line x1="-52" y1="-46" x2="52" y2="46" stroke="#0b1220" stroke-width="10" stroke-linecap="round"/>
+    <g transform="rotate(12)">
+      <rect x="-40" y="-58" width="80" height="116" rx="10" fill="#0b1220" opacity="0.35"/>
+    </g>
+    <g transform="rotate(-8)">
+      <rect x="-42" y="-60" width="84" height="120" rx="11" fill="#0b1220"/>
+      <rect x="-33" y="-51" width="66" height="102" rx="6" fill="none" stroke="#5eead4" stroke-width="3"/>
+      <path d="M 0 -24 L 17 0 L 0 24 L -17 0 Z" fill="#5eead4"/>
+      <path d="M -33 -51 L 33 51 M 33 -51 L -33 51" stroke="#5eead4" stroke-width="1.5" opacity="0.35"/>
+    </g>
   </g>
 
-  <text x="310" y="142" fill="#f8fafc" font-family="'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="76" font-weight="700">blind-env</text>
+  <text x="310" y="142" fill="#f8fafc" font-family="'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="76" font-weight="700">facedown</text>
   <text x="312" y="196" fill="#94a3b8" font-family="'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="29">A .env file for AI agents. They use your secrets by name,</text>
   <text x="312" y="234" fill="#94a3b8" font-family="'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="29">but never see the values.</text>
 

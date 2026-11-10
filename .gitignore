@@ -1,3 +1,5 @@
 node_modules/
 *.tmp-*
+.env.facedown
+# the vault file name from before the rename
 .aienv

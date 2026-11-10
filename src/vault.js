@@ -4,6 +4,7 @@ import path from 'node:path';
 import { isLegacy, newMasterKey, newVaultId, open, seal } from './crypto.js';
 import {
   FILE_NAME,
+  LEGACY_FILE_NAME,
   NAME_RE,
   cleanDescription,
   normalizeHosts,
@@ -26,15 +27,20 @@ export class Vault {
     this._key = null;
   }
 
-  /** Look for a .aienv file in startDir, then in each parent folder. */
+  /**
+   * Look for a .env.facedown file in startDir, then in each parent folder.
+   * A vault from before the rename (.aienv) is found too.
+   */
   static find(startDir = process.cwd()) {
-    if (process.env.BLIND_ENV_FILE) {
-      return fs.existsSync(process.env.BLIND_ENV_FILE) ? process.env.BLIND_ENV_FILE : null;
+    if (process.env.FACEDOWN_FILE) {
+      return fs.existsSync(process.env.FACEDOWN_FILE) ? process.env.FACEDOWN_FILE : null;
     }
     let dir = path.resolve(startDir);
     for (;;) {
-      const candidate = path.join(dir, FILE_NAME);
-      if (fs.existsSync(candidate)) return candidate;
+      for (const name of [FILE_NAME, LEGACY_FILE_NAME]) {
+        const candidate = path.join(dir, name);
+        if (fs.existsSync(candidate)) return candidate;
+      }
       const parent = path.dirname(dir);
       if (parent === dir) return null;
       dir = parent;
@@ -47,12 +53,12 @@ export class Vault {
 
   static open(startDir) {
     const file = Vault.find(startDir);
-    if (!file) throw new Error(`no ${FILE_NAME} vault here. Create one with "blind-env init".`);
+    if (!file) throw new Error(`no ${FILE_NAME} vault here. Create one with "facedown init".`);
     return Vault.load(file);
   }
 
   static init(dir = process.cwd()) {
-    const file = process.env.BLIND_ENV_FILE || path.join(path.resolve(dir), FILE_NAME);
+    const file = process.env.FACEDOWN_FILE || path.join(path.resolve(dir), FILE_NAME);
     if (fs.existsSync(file)) throw new Error(`${file} already exists`);
     const vault = new Vault(file, { id: newVaultId(), entries: new Map() });
     vault._key = newMasterKey();
@@ -108,7 +114,7 @@ export class Vault {
       const err = new Error(
         `${name} is only ${value.length} characters. Values shorter than ${MIN_VALUE_LENGTH} cannot be hidden ` +
           'safely in output (the hiding itself gives them away). Use a longer value, or if it really is short ' +
-          `(like a PIN), run "blind-env set ${name} --allow-short" in a terminal.`
+          `(like a PIN), run "facedown set ${name} --allow-short" in a terminal.`
       );
       err.code = 'SHORT_VALUE';
       throw err;

@@ -4,9 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 
-const home = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-home-'));
-process.env.BLIND_ENV_HOME = home;
-delete process.env.BLIND_ENV_FILE;
+const home = fs.mkdtempSync(path.join(os.tmpdir(), 'facedown-home-'));
+process.env.FACEDOWN_HOME = home;
+delete process.env.FACEDOWN_FILE;
 
 const { newMasterKey, open, seal } = await import('../src/crypto.js');
 const { parseVault, serializeVault } = await import('../src/format.js');
@@ -14,7 +14,7 @@ const { loadKey, saveKey } = await import('../src/keystore.js');
 const { createRedactor } = await import('../src/redact.js');
 const { Vault, hostAllowed } = await import('../src/vault.js');
 
-const tmpProject = () => fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-proj-'));
+const tmpProject = () => fs.mkdtempSync(path.join(os.tmpdir(), 'facedown-proj-'));
 
 test('crypto: round trip, and a new nonce every time', () => {
   const key = newMasterKey();
@@ -67,7 +67,7 @@ test('format: round trip keeps names, notes and hosts', () => {
 });
 
 test('format: a plain-text value is refused and not echoed', () => {
-  const text = '# blind-env vault v1 id=abc\nTOKEN=hunter2\n';
+  const text = '# facedown vault v1 id=abc\nTOKEN=hunter2\n';
   assert.throws(
     () => parseVault(text),
     (err) => /not encrypted/.test(err.message) && !err.message.includes('hunter2')
@@ -92,7 +92,7 @@ test('vault: set, list, reveal, remove; the file never contains the value', () =
   vault.set('DB_PASSWORD', 'correct horse battery', { description: 'local db', allow: ['localhost'] });
   vault.set('API_KEY', 'sk-live-12345');
 
-  const text = fs.readFileSync(path.join(dir, '.aienv'), 'utf8');
+  const text = fs.readFileSync(path.join(dir, '.env.facedown'), 'utf8');
   assert.ok(text.includes('DB_PASSWORD=enc:v2:'));
   assert.ok(text.includes('# @desc local db'));
   assert.ok(!text.includes('correct horse'));
@@ -139,7 +139,7 @@ test('vault: found from a sub-folder', () => {
   Vault.init(dir);
   const sub = path.join(dir, 'a', 'b');
   fs.mkdirSync(sub, { recursive: true });
-  assert.equal(Vault.find(sub), path.join(dir, '.aienv'));
+  assert.equal(Vault.find(sub), path.join(dir, '.env.facedown'));
 });
 
 test('hostAllowed: exact, wildcard, and nothing by default', () => {

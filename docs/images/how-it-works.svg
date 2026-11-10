@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-label="How blind-env works: the AI uses key names, blind-env fills in the real values for programs and allowed APIs, and output comes back with values hidden">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-label="How facedown works: the AI uses key names, facedown fills in the real values for programs and allowed APIs, and output comes back with values hidden">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 Z" fill="#94a3b8"/>
@@ -29,15 +29,15 @@
   <text class="s" x="62" y="274">allowed sites</text>
   <text class="m" x="62" y="312" fill="#fbbf24">***GITHUB_TOKEN***</text>
 
-  <!-- blind-env -->
+  <!-- facedown -->
   <rect class="core" x="440" y="110" width="320" height="280" rx="18"/>
-  <text class="t h" x="464" y="150">blind-env</text>
+  <text class="t h" x="464" y="150">facedown</text>
   <text class="s" x="464" y="176">CLI and MCP server</text>
   <rect class="box" x="464" y="196" width="272" height="74" rx="10"/>
-  <text class="m" x="480" y="224" fill="#5eead4">.aienv</text>
+  <text class="m" x="480" y="224" fill="#5eead4">.env.facedown</text>
   <text class="s" x="480" y="250">names readable, values encrypted</text>
   <rect class="box" x="464" y="284" width="272" height="80" rx="10"/>
-  <text class="m" x="480" y="312" fill="#5eead4">~/.blind-env/keys</text>
+  <text class="m" x="480" y="312" fill="#5eead4">~/.facedown/keys</text>
   <text class="s" x="480" y="338">unlock key, outside the project,</text>
   <text class="s" x="480" y="358">locked to your Windows account</text>
 
@@ -63,23 +63,23 @@
   <text class="t h" x="464" y="484">You</text>
   <text class="s" x="464" y="510">type values, approve sites and deletes</text>
 
-  <!-- arrows: AI -> blind-env -->
+  <!-- arrows: AI -> facedown -->
   <line x1="310" y1="215" x2="436" y2="215" stroke="#94a3b8" stroke-width="2" marker-end="url(#a)"/>
   <text class="lbl" x="322" y="204" fill="#cbd5e1">use GITHUB_TOKEN</text>
-  <!-- blind-env -> AI (hidden output) -->
+  <!-- facedown -> AI (hidden output) -->
   <line x1="436" y1="290" x2="314" y2="290" stroke="#fbbf24" stroke-width="2" marker-end="url(#y)"/>
   <text class="lbl" x="322" y="318" fill="#fbbf24">values hidden</text>
 
-  <!-- blind-env -> program -->
+  <!-- facedown -> program -->
   <path d="M 760 170 C 820 170 830 135 886 135" fill="none" stroke="#2dd4bf" stroke-width="2" marker-end="url(#t)"/>
   <text class="lbl" x="776" y="194" fill="#5eead4">real value</text>
-  <!-- blind-env -> API -->
+  <!-- facedown -> API -->
   <path d="M 760 300 L 886 300" fill="none" stroke="#2dd4bf" stroke-width="2" marker-end="url(#t)"/>
   <text class="lbl" x="776" y="290" fill="#5eead4">real value</text>
-  <!-- blind-env -> blocked -->
+  <!-- facedown -> blocked -->
   <path d="M 760 360 C 820 360 830 425 886 425" fill="none" stroke="#f87171" stroke-width="2" stroke-dasharray="6 6"/>
 
-  <!-- you -> blind-env -->
+  <!-- you -> facedown -->
   <line x1="600" y1="448" x2="600" y2="394" stroke="#94a3b8" stroke-width="2" marker-end="url(#a)"/>
 
   <text class="s" x="40" y="60">The real value only goes to your program or to sites you allowed. The AI only ever gets names and ***masks***.</text>

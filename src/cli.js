@@ -18,33 +18,33 @@ import { MIN_VALUE_LENGTH, Vault } from './vault.js';
 const VERSION = '0.1.0';
 const LEAK_EXIT_CODE = 97;
 
-const HELP = `blind-env ${VERSION} - a .env file for AI agents
+const HELP = `facedown ${VERSION} - a .env file for AI agents
 
 The AI can see the NAMES of your secrets and use them, but never the values.
 
 Usage:
-  blind-env init                         create a ${FILE_NAME} vault in this folder
-  blind-env set NAME [options]           add or replace a secret (hidden input)
+  facedown init                         create a ${FILE_NAME} vault in this folder
+  facedown set NAME [options]           add or replace a secret (hidden input)
       --desc "text"                      what the secret is for (the AI can read this)
       --allow host1,host2                hosts it may be sent to in web requests
       --stdin                            read the value from stdin instead of asking
       --allow-short                      accept a value shorter than 8 characters
-  blind-env list [--json]                show names, notes and allowed hosts
-  blind-env rm NAME                      delete a secret (asks you to confirm)
-  blind-env allow NAME host [host...]    set the hosts a secret may be sent to
+  facedown list [--json]                show names, notes and allowed hosts
+  facedown rm NAME                      delete a secret (asks you to confirm)
+  facedown allow NAME host [host...]    set the hosts a secret may be sent to
                                          (adding a host asks you to confirm)
-  blind-env allow NAME --clear           allow no hosts
-  blind-env check [NAME...]              test that secrets decrypt; shows length
+  facedown allow NAME --clear           allow no hosts
+  facedown check [NAME...]              test that secrets decrypt; shows length
                                          and a fingerprint, never the value
-  blind-env run [--keys A,B] [--strict] [--quiet] -- command
+  facedown run [--keys A,B] [--strict] [--quiet] -- command
                                          run a command with secrets as env vars.
                                          Printing a secret is fine for logs: the
                                          output shows ***NAME*** instead of the
                                          value, plus a one-line note (--quiet
                                          drops the note). With --strict (or
-                                         BLIND_ENV_STRICT=1) printing a secret
+                                         FACEDOWN_STRICT=1) printing a secret
                                          fails the run with exit code 97.
-  blind-env mcp                          start the MCP server (for AI agents)
+  facedown mcp                          start the MCP server (for AI agents)
 
 There is no command that prints a secret value, on purpose.
 `;
@@ -76,11 +76,11 @@ async function cmdSet(args) {
   const fromStdin = takeFlag(args, '--stdin');
   const allowShort = takeFlag(args, '--allow-short');
   const [name, extra] = args;
-  if (!name) throw new Error('usage: blind-env set NAME [--desc "text"] [--allow host,host]');
+  if (!name) throw new Error('usage: facedown set NAME [--desc "text"] [--allow host,host]');
   if (extra !== undefined) {
     throw new Error(
       'do not put the value on the command line (it would be saved in your shell history). ' +
-        `Run "blind-env set ${name}" and type it when asked.`
+        `Run "facedown set ${name}" and type it when asked.`
     );
   }
   const allow = allowText === undefined ? undefined : allowText.split(',');
@@ -107,7 +107,7 @@ async function cmdSet(args) {
       })
     );
   } else {
-    throw new Error(`no terminal to ask in. Run "blind-env set ${name}" yourself in a terminal.`);
+    throw new Error(`no terminal to ask in. Run "facedown set ${name}" yourself in a terminal.`);
   }
 
   vault.set(name, value, { description, allow, allowShort });
@@ -126,7 +126,7 @@ function cmdList(args) {
     return;
   }
   if (!keys.length) {
-    console.log('The vault is empty. Add a secret with "blind-env set NAME".');
+    console.log('The vault is empty. Add a secret with "facedown set NAME".');
     return;
   }
   const width = Math.max(...keys.map((k) => k.name.length));
@@ -139,12 +139,12 @@ function cmdList(args) {
 async function cmdRun(args) {
   const split = args.indexOf('--');
   if (split === -1 || split === args.length - 1) {
-    throw new Error('usage: blind-env run [--keys A,B] -- command [args...]');
+    throw new Error('usage: facedown run [--keys A,B] -- command [args...]');
   }
   const options = args.slice(0, split);
   const argv = args.slice(split + 1);
   const keysText = takeOption(options, '--keys');
-  const strict = takeFlag(options, '--strict') || process.env.BLIND_ENV_STRICT === '1';
+  const strict = takeFlag(options, '--strict') || process.env.FACEDOWN_STRICT === '1';
   const quiet = takeFlag(options, '--quiet');
   if (options.length) throw new Error(`unknown option ${options[0]}`);
 
@@ -155,7 +155,7 @@ async function cmdRun(args) {
   const message = leakMessage(leaks);
   if (message && strict) {
     console.error(
-      `blind-env: ERROR: the command printed the value of ${describeHits(leaks)}. ` +
+      `facedown: ERROR: the command printed the value of ${describeHits(leaks)}. ` +
         `It was hidden, but --strict fails the run (exit code ${LEAK_EXIT_CODE}).`
     );
     process.exitCode = LEAK_EXIT_CODE;
@@ -170,7 +170,7 @@ async function main() {
     case 'init': {
       const vault = Vault.init();
       console.log(`Created ${vault.file}`);
-      console.log('Add a secret with: blind-env set NAME');
+      console.log('Add a secret with: facedown set NAME');
       break;
     }
     case 'set':
@@ -183,7 +183,7 @@ async function main() {
     case 'rm':
     case 'remove': {
       const name = args[0];
-      if (!name) throw new Error('usage: blind-env rm NAME');
+      if (!name) throw new Error('usage: facedown rm NAME');
       const vault = Vault.open();
       if (!vault.has(name)) throw new Error(`no key named ${name}`);
       // Deleting cannot be undone, so it always needs the user's OK.
@@ -197,7 +197,7 @@ async function main() {
     case 'allow': {
       const clear = takeFlag(args, '--clear');
       const [name, ...hosts] = args;
-      if (!name || (!clear && !hosts.length)) throw new Error('usage: blind-env allow NAME host [host...]');
+      if (!name || (!clear && !hosts.length)) throw new Error('usage: facedown allow NAME host [host...]');
       const vault = Vault.open();
       if (!vault.has(name)) throw new Error(`no key named ${name}`);
       const wanted = clear ? [] : hosts.flatMap((h) => h.split(','));
@@ -247,12 +247,12 @@ async function main() {
       console.log(HELP);
       break;
     default:
-      throw new Error(`unknown command "${command}". Try "blind-env help".`);
+      throw new Error(`unknown command "${command}". Try "facedown help".`);
   }
 }
 
 main().catch((err) => {
   if (err instanceof PromptCancelled) console.error(`Cancelled: ${err.message}.`);
-  else console.error(`blind-env: ${err.message}`);
+  else console.error(`facedown: ${err.message}`);
   process.exitCode = 1;
 });

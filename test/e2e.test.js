@@ -13,12 +13,12 @@ const CLI = fileURLToPath(new URL('../src/cli.js', import.meta.url));
 const SECRET = 'sk-test-9f8e7d6c5b4a';
 const OTHER = 'second-secret-value';
 
-const home = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-home-'));
-const project = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-proj-'));
+const home = fs.mkdtempSync(path.join(os.tmpdir(), 'facedown-home-'));
+const project = fs.mkdtempSync(path.join(os.tmpdir(), 'facedown-proj-'));
 // No windows during tests: anything that needs the user's OK is refused.
-const env = { ...process.env, BLIND_ENV_HOME: home, BLIND_ENV_NO_WINDOW: '1' };
-delete env.BLIND_ENV_FILE;
-delete env.BLIND_ENV_DIR;
+const env = { ...process.env, FACEDOWN_HOME: home, FACEDOWN_NO_WINDOW: '1' };
+delete env.FACEDOWN_FILE;
+delete env.FACEDOWN_DIR;
 delete env.CLAUDE_PROJECT_DIR;
 
 function cli(args, input) {
@@ -67,7 +67,7 @@ test('cli: set (stdin), list, and the vault file hides the value', () => {
   r = cli(['set', 'OTHER_KEY', '--stdin'], OTHER);
   assert.equal(r.status, 0, r.stderr);
 
-  const file = fs.readFileSync(path.join(project, '.aienv'), 'utf8');
+  const file = fs.readFileSync(path.join(project, '.env.facedown'), 'utf8');
   assert.ok(file.includes('API_KEY=enc:v2:'));
   assert.ok(!file.includes(SECRET));
 
@@ -75,6 +75,34 @@ test('cli: set (stdin), list, and the vault file hides the value', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /API_KEY\s+test api key\s+\[allowed: 127\.0\.0\.1\]/);
   assert.ok(!(r.stdout + r.stderr).includes(SECRET));
+});
+
+test('a vault made before the rename (blind-env, .aienv, ~/.blind-env) still opens', () => {
+  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'facedown-legacyhome-'));
+  const legacyProject = fs.mkdtempSync(path.join(os.tmpdir(), 'facedown-legacyproj-'));
+  const legacyFile = path.join(legacyProject, '.aienv');
+
+  // Make a vault whose key sits where blind-env kept it, then give the file
+  // blind-env's header, as if blind-env had written it.
+  const make = spawnSync(process.execPath, [CLI, 'set', 'OLD_KEY', '--stdin'], {
+    cwd: legacyProject,
+    env: { ...env, FACEDOWN_HOME: path.join(fakeHome, '.blind-env'), FACEDOWN_FILE: legacyFile },
+    input: 'old-vault-value-12345',
+    encoding: 'utf8',
+  });
+  assert.equal(make.status, 0, make.stderr);
+  fs.writeFileSync(legacyFile, fs.readFileSync(legacyFile, 'utf8').replace('# facedown vault', '# blind-env vault'));
+
+  // Now use it like a fresh facedown install would: default home, no file override.
+  const plainEnv = { ...env, USERPROFILE: fakeHome, HOME: fakeHome };
+  delete plainEnv.FACEDOWN_HOME;
+  delete plainEnv.FACEDOWN_FILE;
+  const r = spawnSync(process.execPath, [CLI, 'check'], { cwd: legacyProject, env: plainEnv, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /OLD_KEY\s+ok\s+length 21/);
+  // The key was copied to the new place.
+  const vaultId = /id=([A-Za-z0-9_-]+)/.exec(fs.readFileSync(legacyFile, 'utf8'))[1];
+  assert.ok(fs.existsSync(path.join(fakeHome, '.facedown', 'keys', `${vaultId}.key`)));
 });
 
 test('cli: a short value is refused unless --allow-short is given', () => {
@@ -137,7 +165,7 @@ test('cli: --strict turns a printed secret into a failed run; clean programs are
 
   r = spawnSync(process.execPath, [CLI, 'run', '--', process.execPath, 'leak.js'], {
     cwd: project,
-    env: { ...env, BLIND_ENV_STRICT: '1' },
+    env: { ...env, FACEDOWN_STRICT: '1' },
     encoding: 'utf8',
   });
   assert.equal(r.status, 97, r.stderr);
@@ -173,7 +201,7 @@ test('cli: run with a key that does not exist fails before starting anything', (
 });
 
 test('vault file: tells AI agents the rules, and a hand-edited value is rejected', () => {
-  const file = path.join(project, '.aienv');
+  const file = path.join(project, '.env.facedown');
   const original = fs.readFileSync(file, 'utf8');
   assert.match(original, /AI agents: use these keys by NAME/);
 
@@ -205,7 +233,7 @@ test('cli: allow needs confirmation to add a site, not to keep or remove one', (
 });
 
 test('vault file: adding a site by hand breaks that key instead of allowing it', () => {
-  const file = path.join(project, '.aienv');
+  const file = path.join(project, '.env.facedown');
   const original = fs.readFileSync(file, 'utf8');
   assert.match(original, /^API_KEY=enc:v2:/m);
   fs.writeFileSync(file, original.replace('# @allow 127.0.0.1', '# @allow 127.0.0.1,evil.example'));
@@ -218,23 +246,23 @@ test('vault file: adding a site by hand breaks that key instead of allowing it',
 });
 
 test('mcp (as plugin): never uses its own install folder, uses the project instead', () => {
-  const pluginRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-plugin-'));
+  const pluginRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'facedown-plugin-'));
   const ask = (extraEnv) => {
     const input =
       JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }) + '\n' +
       JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'list_keys', arguments: {} } }) + '\n';
     const r = spawnSync(process.execPath, [CLI, 'mcp'], {
       cwd: pluginRoot,
-      env: { ...env, BLIND_ENV_SKIP_DIR: pluginRoot, ...extraEnv },
+      env: { ...env, FACEDOWN_SKIP_DIR: pluginRoot, ...extraEnv },
       input,
       encoding: 'utf8',
     });
     const reply = r.stdout.trim().split('\n').map((l) => JSON.parse(l)).find((m) => m.id === 2);
     return reply.result.content[0].text;
   };
-  assert.equal(ask({ CLAUDE_PROJECT_DIR: project }).split('\n')[0], `Vault: ${path.join(project, '.aienv')}`);
+  assert.equal(ask({ CLAUDE_PROJECT_DIR: project }).split('\n')[0], `Vault: ${path.join(project, '.env.facedown')}`);
   assert.match(ask({}), /cannot tell which project folder to use/);
-  assert.ok(!fs.existsSync(path.join(pluginRoot, '.aienv')));
+  assert.ok(!fs.existsSync(path.join(pluginRoot, '.env.facedown')));
 });
 
 test('mcp: bad messages get an error and never stop the server', () => {
@@ -267,7 +295,7 @@ test('mcp: bad messages get an error and never stop the server', () => {
 test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
   // CLAUDE_PROJECT_DIR points at a different, empty folder (like a session
   // that started somewhere else). The server must still use the project vault.
-  const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-elsewhere-'));
+  const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'facedown-elsewhere-'));
   const child = spawn(process.execPath, [CLI, 'mcp'], {
     cwd: project,
     env: { ...env, CLAUDE_PROJECT_DIR: elsewhere },
@@ -301,7 +329,7 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
   try {
     const init = await request('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '0' } });
     assert.equal(init.result.protocolVersion, '2025-06-18');
-    assert.equal(init.result.serverInfo.name, 'blind-env');
+    assert.equal(init.result.serverInfo.name, 'facedown');
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
 
     const tools = await request('tools/list', {});
@@ -310,12 +338,12 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
     assert.match(runTool.description, process.platform === 'win32' ? /cmd\.exe.*%NAME%/ : /\/bin\/sh/);
 
     const list = await call('list_keys', {});
-    assert.equal(list.text.split('\n')[0], `Vault: ${path.join(project, '.aienv')}`);
+    assert.equal(list.text.split('\n')[0], `Vault: ${path.join(project, '.env.facedown')}`);
     assert.match(list.text, /API_KEY\n {2}description: test api key\n {2}allowed hosts: 127\.0\.0\.1/);
-    assert.ok(!fs.existsSync(path.join(elsewhere, '.aienv')));
+    assert.ok(!fs.existsSync(path.join(elsewhere, '.env.facedown')));
 
     const run = await call('run_with_secrets', { command: `"${process.execPath}" child.js`, keys: ['API_KEY'] });
-    assert.match(run.text, /^blind-env: note: hid the value of API_KEY \(3x\).*\nexit code 7\n/);
+    assert.match(run.text, /^facedown: note: hid the value of API_KEY \(3x\).*\nexit code 7\n/);
     assert.match(run.text, /plain=\*\*\*API_KEY\*\*\*/);
     assert.match(run.text, /b64=\*\*\*API_KEY:base64\*\*\*/);
     assert.match(run.text, /err=\*\*\*API_KEY\*\*\*/);
@@ -333,7 +361,7 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
     assert.equal(ok.isError, false, ok.text);
     assert.equal(lastRequest.headers.authorization, `Bearer ${SECRET}`);
     assert.equal(lastRequest.body, `{"token":"${SECRET}"}`);
-    assert.match(ok.text, /^blind-env: note: hid the value of API_KEY \(\d+x\).*\nHTTP 200/);
+    assert.match(ok.text, /^facedown: note: hid the value of API_KEY \(\d+x\).*\nHTTP 200/);
     assert.match(ok.text, /Bearer \*\*\*API_KEY\*\*\*/);
     assert.match(ok.text, /x-echo-auth: Bearer \*\*\*API_KEY\*\*\*/);
 

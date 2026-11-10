@@ -1,19 +1,19 @@
 # Full manual test (prompt for an AI session)
 
-How to use it: start a **new** Claude Code session in the blind-env repo folder,
-approve the **blind-env** MCP server when asked, and paste everything in the box
+How to use it: start a **new** Claude Code session in the facedown repo folder,
+approve the **facedown** MCP server when asked, and paste everything in the box
 below. Some steps need you to click in a window; the AI will tell you when.
 
 ```text
-You are testing blind-env, a ".env for AI agents", in this repo. Read README.md first.
+You are testing facedown, a ".env for AI agents", in this repo. Read README.md first.
 Goal: check that every feature works AND that secret values never reach you.
 Do not change any code, and do not commit or push. Only test and report.
 
 RULES
-- Never decrypt anything yourself: do not read ~/.blind-env, do not import
+- Never decrypt anything yourself: do not read ~/.facedown, do not import
   src/vault.js or src/crypto.js, do not write scripts that call reveal().
-  Only use the blind-env MCP tools and "node src/cli.js <command>".
-- Never simulate key presses or clicks on blind-env windows. Windows are for
+  Only use the facedown MCP tools and "node src/cli.js <command>".
+- Never simulate key presses or clicks on facedown windows. Windows are for
   the user. When a step needs a window, tell the user exactly what to click.
 - For keys YOU create with --stdin, use dummy values of 20+ characters
   (like dummy-alpha-1234567890) so you can search all output for them.
@@ -23,7 +23,7 @@ RULES
 
 PART 1 - SETUP
 1. list_keys: the first line must be
-   "Vault: C:\Users\nirsh\OneDrive\Desktop\blind-env\.aienv", not a temp folder.
+   "Vault: C:\Users\nirsh\OneDrive\Desktop\facedown\.env.facedown", not a temp folder.
 2. Ask the user to type /keys and tell you what they see.
 3. Check that these slash commands exist (ask the user to type / and look):
    /addKey /keys /removeKey /allowSite /removeSite
@@ -53,7 +53,7 @@ Use both "node src/cli.js run --keys TEST_TOKEN -- ..." and run_with_secrets:
     node -e "const v=process.env.TEST_TOKEN;process.stdout.write(v.slice(0,11));setTimeout(()=>console.log(v.slice(11)),300)"
     Expected: only ***TEST_TOKEN***.
 11. Note line "hid the value of ..." appears; --quiet removes it; --strict and
-    BLIND_ENV_STRICT=1 fail with exit code 97. Printing only the length: no note.
+    FACEDOWN_STRICT=1 fail with exit code 97. Printing only the length: no note.
 
 PART 4 - WEB REQUESTS
 12. Start a local HTTP echo server on 127.0.0.1 (node, in the background) that
@@ -75,7 +75,7 @@ PART 5 - ALLOWED SITES
 15. Ask the user: "/removeSite NO_HOSTS_KEY 127.0.0.1". No window. BLOCKED again.
 16. CLI "allow TEST_TOKEN 127.0.0.1 example.com": a window opens; ask the user
     to press Cancel. Expected: exit 1, nothing changed.
-17. Hand-edit test: in .aienv, add ",evil.example" to TEST_TOKEN's "# @allow"
+17. Hand-edit test: in .env.facedown, add ",evil.example" to TEST_TOKEN's "# @allow"
     line with a text edit. Expected: check says FAILED / cannot decrypt, and
     run and http_request with TEST_TOKEN fail. Put the line back exactly and
     confirm check is ok again.

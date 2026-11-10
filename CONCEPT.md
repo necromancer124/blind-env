@@ -1,4 +1,4 @@
-# blind-env — the concept
+# facedown — the concept
 
 How to use the tool is in [README.md](README.md). This file is the idea behind
 it and the choices made so far.
@@ -23,10 +23,10 @@ but they cannot open it.
 ## Choices made
 
 **One file, not two.** The first sketch had a readable manifest plus a separate
-encrypted file. They could drift apart. Now there is one `.aienv` file where
+encrypted file. They could drift apart. Now there is one `.env.facedown` file where
 names and notes are readable and each value is encrypted.
 
-**A new file name, not a new format.** `.aienv` is `.env` syntax with
+**A new file name, not a new format.** `.env.facedown` is `.env` syntax with
 `# @desc` and `# @allow` comment lines. Editors already understand it.
 
 **Standard encryption.** AES-256-GCM from Node's built-in crypto. Each value is
@@ -53,6 +53,14 @@ sitting. The MCP server speaks the protocol directly.
 **Honest about the limit.** An agent with a full shell under your account can
 get around any of this if it tries. The tool is built to stop accidents and
 leaks into transcripts, and says so. See "What it protects" in the README.
+
+## The name
+
+The project started as **blind-env**, with the file `.aienv`. It was renamed
+to **facedown** with the file `.env.facedown`: like a card played face down, it
+counts in the game but nobody sees it, and keeping `.env` at the front makes
+the file easy to recognise and lets editors highlight it. The runner-up was
+`.env.broker` ("the better env"), which was a bit too cheesy.
 
 ## Open questions
 

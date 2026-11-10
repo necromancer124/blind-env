@@ -26,12 +26,15 @@
     <svg width="200" height="200" viewBox="-100 -100 200 200">
       <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#0d9488"/></linearGradient></defs>
       <rect x="-100" y="-100" width="200" height="200" rx="44" fill="url(#g)"/>
-      <path d="M -64 0 Q 0 -53 64 0 Q 0 53 -64 0 Z" fill="none" stroke="#0b1220" stroke-width="11" stroke-linejoin="round"/>
-      <circle r="19" fill="#0b1220"/>
-      <line x1="-57" y1="-51" x2="57" y2="51" stroke="url(#g)" stroke-width="24" stroke-linecap="round"/>
-      <line x1="-57" y1="-51" x2="57" y2="51" stroke="#0b1220" stroke-width="11" stroke-linecap="round"/>
+      <g transform="rotate(12)"><rect x="-44" y="-64" width="88" height="128" rx="11" fill="#0b1220" opacity="0.35"/></g>
+      <g transform="rotate(-8)">
+        <rect x="-47" y="-66" width="94" height="132" rx="12" fill="#0b1220"/>
+        <rect x="-37" y="-56" width="74" height="112" rx="7" fill="none" stroke="#5eead4" stroke-width="3.5"/>
+        <path d="M 0 -27 L 19 0 L 0 27 L -19 0 Z" fill="#5eead4"/>
+        <path d="M -37 -56 L 37 56 M 37 -56 L -37 56" stroke="#5eead4" stroke-width="1.6" opacity="0.35"/>
+      </g>
     </svg>
-    <div class="name">blind-env</div>
+    <div class="name">facedown</div>
   </div>
   <div class="tag">A .env file for AI agents.<br>They use your secrets by name, but never see the values.</div>
   <div class="chip"><span class="k">token</span><span class="e"> = </span><span class="v">***GITHUB_TOKEN***</span></div>

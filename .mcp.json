@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "blind-env": {
+    "facedown": {
       "command": "node",
       "args": ["src/cli.js", "mcp"]
     }

@@ -184,5 +184,5 @@ export function describeHits(hits) {
 export function leakMessage(hits) {
   const list = describeHits(hits);
   if (!list) return '';
-  return `blind-env: note: hid the value of ${list} in the output. Logs show the key name instead of the value.`;
+  return `facedown: note: hid the value of ${list} in the output. Logs show the key name instead of the value.`;
 }

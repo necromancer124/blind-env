@@ -20,7 +20,7 @@ import { Vault } from './vault.js';
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
 const INSTRUCTIONS =
-  'blind-env keeps the user\'s secrets (passwords, tokens, API keys). You can see key NAMES and use them, ' +
+  'facedown keeps the user\'s secrets (passwords, tokens, API keys). You can see key NAMES and use them, ' +
   'but never the values. Use list_keys to see what exists. In code, read secrets from environment variables ' +
   'named after the key, and run that code with run_with_secrets. For web APIs use http_request with {{KEY_NAME}} ' +
   'placeholders. To add a secret, call add_key: the user types the value into a private window. ' +
@@ -30,7 +30,7 @@ const TOOLS = [
   {
     name: 'list_keys',
     description:
-      'List the secrets in the blind-env vault: name, description and the hosts each one may be sent to. Values are never returned.',
+      'List the secrets in the facedown vault: name, description and the hosts each one may be sent to. Values are never returned.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -59,7 +59,7 @@ const TOOLS = [
       `The command runs in ${process.platform === 'win32' ? 'cmd.exe, so read a variable as %NAME% (not $NAME)' : '/bin/sh, so read a variable as $NAME'}; ` +
       'it is often easier to read it inside a script (process.env.NAME, os.environ["NAME"]). ' +
       "Runs in the vault folder unless cwd is given. The command also inherits this app's own environment " +
-      'variables (not blind-env secrets, so they are NOT hidden): do not print the whole environment. ' +
+      'variables (not facedown secrets, so they are NOT hidden): do not print the whole environment. ' +
       'Returns the exit code and output; secret values in the output are replaced with ***NAME***.',
     inputSchema: {
       type: 'object',
@@ -119,21 +119,21 @@ const TOOLS = [
 ];
 
 export async function serveMcp() {
-  // Which vault? BLIND_ENV_DIR if set. Otherwise the server's own folder
+  // Which vault? FACEDOWN_DIR if set. Otherwise the server's own folder
   // first (a project .mcp.json starts us there), then CLAUDE_PROJECT_DIR,
   // which can still point at the folder a session started in.
-  // BLIND_ENV_SKIP_DIR (set by the plugin to its own install folder) is never
+  // FACEDOWN_SKIP_DIR (set by the plugin to its own install folder) is never
   // used: a vault must live in the user's project, not inside the plugin.
   const norm = (d) => {
     const p = path.resolve(d) + path.sep;
     return process.platform === 'win32' ? p.toLowerCase() : p;
   };
-  const skip = process.env.BLIND_ENV_SKIP_DIR ? norm(process.env.BLIND_ENV_SKIP_DIR) : null;
+  const skip = process.env.FACEDOWN_SKIP_DIR ? norm(process.env.FACEDOWN_SKIP_DIR) : null;
   const usable = (d) => Boolean(d) && !(skip && norm(d).startsWith(skip));
 
   function locate() {
-    if (process.env.BLIND_ENV_DIR) {
-      return { file: Vault.find(process.env.BLIND_ENV_DIR), createIn: process.env.BLIND_ENV_DIR };
+    if (process.env.FACEDOWN_DIR) {
+      return { file: Vault.find(process.env.FACEDOWN_DIR), createIn: process.env.FACEDOWN_DIR };
     }
     const dirs = [process.cwd(), process.env.CLAUDE_PROJECT_DIR].filter(usable);
     for (const dir of dirs) {
@@ -144,7 +144,7 @@ export async function serveMcp() {
   }
   const NO_PROJECT =
     'cannot tell which project folder to use. Start the session in your project folder, ' +
-    'or set BLIND_ENV_DIR for the blind-env server.';
+    'or set FACEDOWN_DIR for the facedown server.';
   function openVault() {
     const { file } = locate();
     if (!file) throw new Error('there is no vault yet. Call add_key to create one.');
@@ -180,7 +180,7 @@ export async function serveMcp() {
       // Check the name and hosts before bothering the user.
       Vault.check(name, allow);
       if (!canPromptInWindow()) {
-        return `I cannot open a password window on this system. Ask the user to run this in their own terminal:\n  blind-env set ${name}`;
+        return `I cannot open a password window on this system. Ask the user to run this in their own terminal:\n  facedown set ${name}`;
       }
       // One window at a time.
       const turn = promptQueue.then(async () => {
@@ -313,7 +313,7 @@ export async function serveMcp() {
         return reply({
           protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
           capabilities: { tools: {} },
-          serverInfo: { name: 'blind-env', version: '0.1.0' },
+          serverInfo: { name: 'facedown', version: '0.1.0' },
           instructions: INSTRUCTIONS,
         });
       }
@@ -339,7 +339,7 @@ export async function serveMcp() {
 
   // One bad message must never take the whole server down: the client would
   // only see "Connection closed".
-  const logError = (err) => process.stderr.write(`blind-env mcp: ${err?.stack || err}\n`);
+  const logError = (err) => process.stderr.write(`facedown mcp: ${err?.stack || err}\n`);
   process.on('unhandledRejection', logError);
   process.on('uncaughtException', logError);
 

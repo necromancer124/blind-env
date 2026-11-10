@@ -1,6 +1,6 @@
 # Security
 
-blind-env exists to keep secrets away from AI agents, so security reports are
+facedown exists to keep secrets away from AI agents, so security reports are
 very welcome.
 
 ## Reporting a problem
@@ -8,7 +8,7 @@ very welcome.
 Please **do not open a public issue** for a security problem. Use GitHub's
 private reporting instead:
 
-1. Go to the [Security tab](https://github.com/necromancer124/blind-env/security)
+1. Go to the [Security tab](https://github.com/necromancer124/facedown/security)
    of this repository.
 2. Click **Report a vulnerability**.
 
@@ -18,7 +18,7 @@ in your report, never a real secret.
 ## What counts
 
 Anything that lets a secret value reach the AI, the chat, or a site that is
-not on the key's allowed list, through normal use of blind-env. For example:
+not on the key's allowed list, through normal use of facedown. For example:
 
 - a way a value gets past the output cleaner (`***NAME***`);
 - a way to add an allowed site or delete a key without the confirmation window;
@@ -27,7 +27,7 @@ not on the key's allowed list, through normal use of blind-env. For example:
 ## Known limits (not bugs)
 
 The README section "What it protects, and what it does not" lists what
-blind-env does not try to stop. Most importantly: an AI with a full shell that
+facedown does not try to stop. Most importantly: an AI with a full shell that
 is deliberately trying to steal a secret can get around it, because it runs as
 you. Reports that show a cheap, practical improvement there are still welcome.
 

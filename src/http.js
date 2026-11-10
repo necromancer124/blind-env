@@ -1,4 +1,4 @@
-// Make a web request with secrets filled in by blind-env.
+// Make a web request with secrets filled in by facedown.
 //
 // The caller writes {{KEY_NAME}} in a header value or in the body. Each key
 // may only be sent to the hosts on its allow list, redirects are not followed,
@@ -42,7 +42,7 @@ export async function httpRequest(vault, { url, method = 'GET', headers = {}, bo
       throw new Error(
         `BLOCKED: ${name} may not be sent to ${target.hostname} (allowed: ${allowed}). ` +
           'Only the user can allow a new site: ask them to approve it with /allowSite ' +
-          `(or the allow_hosts tool), or to run "blind-env allow ${name} ${target.hostname}".`
+          `(or the allow_hosts tool), or to run "facedown allow ${name} ${target.hostname}".`
       );
     }
   }
