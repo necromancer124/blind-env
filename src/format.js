@@ -11,7 +11,7 @@
 
 export const FILE_NAME = '.aienv';
 export const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-export const SEALED_PREFIX = 'enc:v1:';
+export const SEALED_RE = /^enc:v[12]:/;
 
 const HEADER_RE = /^blind-env vault v(\d+) id=([A-Za-z0-9_-]+)$/;
 
@@ -53,7 +53,7 @@ export function parseVault(text) {
       sealed = sealed.slice(1, -1);
     }
     if (!NAME_RE.test(name)) throw new Error(`${where}: invalid key name "${name}"`);
-    if (!sealed.startsWith(SEALED_PREFIX)) {
+    if (!SEALED_RE.test(sealed)) {
       // Never echo the value: it may be a plain-text secret pasted by mistake.
       throw new Error(
         `${where}: the value of ${name} is not encrypted. ` +

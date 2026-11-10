@@ -135,8 +135,26 @@ vault key, so it cannot be used to guess the value.
 The `.aienv` file also starts with a short note for AI agents: use keys by
 name, never print or decode a value.
 
-Other commands: `blind-env rm NAME`, `blind-env allow NAME host…`,
-`blind-env allow NAME --clear`, `blind-env help`.
+### Allowed sites
+
+A key can only be sent (with `http_request`) to the sites on its list. A new
+key has an empty list.
+
+```bash
+blind-env allow GITHUB_TOKEN api.github.com
+```
+
+- `allow` sets the whole list, so name every site you want.
+- `*.github.com` covers every subdomain (not `github.com` itself).
+- `blind-env allow NAME --clear` removes all sites.
+- **Adding a site always asks you first**, in a confirmation window on Windows
+  (or a y/N question in a terminal elsewhere), even when an AI runs the command.
+  Enter means Cancel; approving takes a click on Allow. Removing sites needs no
+  confirmation.
+- The list is protected by the encryption: if someone adds a site by editing
+  `.aienv` by hand, that key stops working instead of being sent there.
+
+Other commands: `blind-env rm NAME`, `blind-env help`.
 
 ## Use it from an AI agent (MCP server)
 
@@ -155,10 +173,12 @@ The agent gets four tools:
 | `add_key` | Opens a private window where **you** type the value. |
 | `run_with_secrets` | Runs a command with the chosen keys as environment variables (in `cmd.exe` on Windows, so `%NAME%`). Output is cleaned. |
 | `http_request` | Sends a web request with `{{KEY_NAME}}` filled in. Only to allowed hosts, HTTPS only, redirects not followed, response cleaned. |
+| `allow_hosts` | Adds or removes allowed sites for a key. Adding opens a confirmation window; nothing changes unless **you** click Allow. |
 
 This repo is also laid out as a Claude Code plugin (`.claude-plugin/`), which
-adds the `/addKey` and `/keys` commands. If you open this repo itself in Claude
-Code, `.mcp.json` and `.claude/commands/` give you the server and both commands
+adds the `/addKey`, `/keys` and `/allowSite KEY host` commands. If you open this
+repo itself in Claude Code, `.mcp.json` and `.claude/commands/` give you the
+server and the commands
 without installing anything. Start the session in the repo folder itself: a
 session that starts elsewhere does not load them until it moves into the repo.
 
@@ -175,7 +195,8 @@ session that starts elsewhere does not load them until it moves into the repo.
 **It does not protect against an AI that has a shell and is trying to steal a
 secret.** An agent that can run any command as you can write a program that
 scrambles the secret before printing it (so the cleaner misses it), sends it to
-a server, or unlocks the key file the same way blind-env does. Nothing running
+a server, unlocks the key file the same way blind-env does, or even "click" the
+confirmation window with simulated key presses. Nothing running
 under your own account can fully stop that.
 
 So think of blind-env as a seat belt, not a vault door: it stops the common,

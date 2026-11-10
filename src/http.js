@@ -30,13 +30,19 @@ export async function httpRequest(vault, { url, method = 'GET', headers = {}, bo
 
   const used = new Set([...Object.values(headers).flatMap(namesIn), ...(body ? namesIn(body) : [])]);
   for (const name of used) {
-    const entry = vault.entries.get(name);
-    if (!entry) throw new Error(`no key named ${name}`);
-    if (!hostAllowed(entry.allow, target.hostname)) {
-      const allowed = entry.allow.length ? entry.allow.join(', ') : 'no hosts yet';
+    if (!vault.has(name)) throw new Error(`no key named ${name}`);
+    const allow = vault.trustedAllow(name);
+    if (!hostAllowed(allow, target.hostname)) {
+      const legacy = !allow.length && vault.entries.get(name).allow.length;
+      const allowed = legacy
+        ? 'none yet: its hosts were set by an older version, set them again'
+        : allow.length
+          ? allow.join(', ')
+          : 'no hosts yet';
       throw new Error(
         `BLOCKED: ${name} may not be sent to ${target.hostname} (allowed: ${allowed}). ` +
-          `Only the user can change this: blind-env allow ${name} ${target.hostname}`
+          'Only the user can allow a new site: ask them to approve it with /allowSite ' +
+          `(or the allow_hosts tool), or to run "blind-env allow ${name} ${target.hostname}".`
       );
     }
   }

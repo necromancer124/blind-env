@@ -25,6 +25,24 @@ test('crypto: round trip, and a new nonce every time', () => {
   assert.equal(open(key, 'v1', 'TOKEN', a), 'hunter2-ünï');
 });
 
+test('crypto: allowed hosts are part of the seal; v1 values still open', async () => {
+  const { createCipheriv, randomBytes } = await import('node:crypto');
+  const key = newMasterKey();
+  const sealed = seal(key, 'v1', 'TOKEN', 'hunter2-long', ['a.com', 'b.com']);
+  assert.ok(sealed.startsWith('enc:v2:'));
+  assert.equal(open(key, 'v1', 'TOKEN', sealed, ['b.com', 'a.com']), 'hunter2-long'); // order does not matter
+  assert.throws(() => open(key, 'v1', 'TOKEN', sealed, ['a.com', 'b.com', 'evil.com']), /changed by hand/);
+  assert.throws(() => open(key, 'v1', 'TOKEN', sealed, []), /changed by hand/);
+
+  // A value written by the older v1 format (no hosts in the seal).
+  const nonce = randomBytes(12);
+  const c = createCipheriv('aes-256-gcm', key, nonce);
+  c.setAAD(Buffer.from('blind-env:v1:v1:TOKEN'));
+  const ct = Buffer.concat([c.update('old-value-123'), c.final()]);
+  const legacy = 'enc:v1:' + Buffer.concat([nonce, c.getAuthTag(), ct]).toString('base64url');
+  assert.equal(open(key, 'v1', 'TOKEN', legacy, ['anything.com']), 'old-value-123');
+});
+
 test('crypto: rejects tampering, the wrong key, and a value moved to another name', () => {
   const key = newMasterKey();
   const sealed = seal(key, 'v1', 'TOKEN', 'hunter2');
@@ -75,7 +93,7 @@ test('vault: set, list, reveal, remove; the file never contains the value', () =
   vault.set('API_KEY', 'sk-live-12345');
 
   const text = fs.readFileSync(path.join(dir, '.aienv'), 'utf8');
-  assert.ok(text.includes('DB_PASSWORD=enc:v1:'));
+  assert.ok(text.includes('DB_PASSWORD=enc:v2:'));
   assert.ok(text.includes('# @desc local db'));
   assert.ok(!text.includes('correct horse'));
   assert.ok(!text.includes('sk-live'));

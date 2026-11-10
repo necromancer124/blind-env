@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { newMasterKey, newVaultId, open, seal } from './crypto.js';
+import { isLegacy, newMasterKey, newVaultId, open, seal } from './crypto.js';
 import {
   FILE_NAME,
   NAME_RE,
@@ -83,10 +83,10 @@ export class Vault {
 
   /** Names, descriptions and allowed hosts. Never values. */
   list() {
-    return [...this.entries.values()].map(({ name, description, allow }) => ({
+    return [...this.entries.values()].map(({ name, description }) => ({
       name,
       description,
-      allow: [...allow],
+      allow: this.trustedAllow(name),
     }));
   }
 
@@ -114,11 +114,14 @@ export class Vault {
       throw err;
     }
     const old = this.entries.get(name);
+    // A legacy (v1) entry's hosts were never protected, so they are not carried over.
+    const keptAllow = old && !isLegacy(old.sealed) ? old.allow : [];
+    const finalAllow = allow !== undefined ? normalizeHosts(allow) : keptAllow;
     this.entries.set(name, {
       name,
-      sealed: seal(this.key(), this.id, name, value),
+      sealed: seal(this.key(), this.id, name, value, finalAllow),
       description: description !== undefined ? cleanDescription(description) : old?.description ?? '',
-      allow: allow !== undefined ? normalizeHosts(allow) : old?.allow ?? [],
+      allow: finalAllow,
     });
     this.save();
   }
@@ -128,11 +131,35 @@ export class Vault {
     this.save();
   }
 
+  /**
+   * Replace a key's allowed hosts. The value is sealed again, because the
+   * hosts are part of what the encryption protects.
+   * Callers must get the user's confirmation before ADDING a host.
+   */
   setAllow(name, hosts) {
     const entry = this.entries.get(name);
     if (!entry) throw new Error(`no key named ${name}`);
+    const value = this.reveal([name])[name];
     entry.allow = normalizeHosts(hosts);
+    entry.sealed = seal(this.key(), this.id, name, value, entry.allow);
     this.save();
+  }
+
+  /**
+   * The hosts a key may really be sent to. Legacy (v1) entries count as none:
+   * their host list was not protected and could have been edited by hand.
+   * (For v2 entries a hand-edited list makes decryption fail instead.)
+   */
+  trustedAllow(name) {
+    const entry = this.entries.get(name);
+    if (!entry) throw new Error(`no key named ${name}`);
+    return isLegacy(entry.sealed) ? [] : [...entry.allow];
+  }
+
+  /** Hosts in `hosts` that this key is not yet allowed to be sent to. */
+  newHosts(name, hosts) {
+    const current = new Set(this.trustedAllow(name));
+    return normalizeHosts(hosts).filter((h) => !current.has(h));
   }
 
   /**
@@ -155,7 +182,7 @@ export class Vault {
     for (const name of names) {
       const entry = this.entries.get(name);
       if (!entry) throw new Error(`no key named ${name}`);
-      out[name] = open(this.key(), this.id, name, entry.sealed);
+      out[name] = open(this.key(), this.id, name, entry.sealed, entry.allow);
     }
     return out;
   }

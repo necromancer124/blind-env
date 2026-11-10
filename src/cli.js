@@ -5,6 +5,7 @@ import {
   PromptCancelled,
   canPromptInTerminal,
   canPromptInWindow,
+  confirmNewHosts,
   describeKeyForPrompt,
   promptTerminal,
   promptWindow,
@@ -30,6 +31,7 @@ Usage:
   blind-env list [--json]                show names, notes and allowed hosts
   blind-env rm NAME                      delete a secret
   blind-env allow NAME host [host...]    set the hosts a secret may be sent to
+                                         (adding a host asks you to confirm)
   blind-env allow NAME --clear           allow no hosts
   blind-env check [NAME...]              test that secrets decrypt; shows length
                                          and a fingerprint, never the value
@@ -188,8 +190,17 @@ async function main() {
       const [name, ...hosts] = args;
       if (!name || (!clear && !hosts.length)) throw new Error('usage: blind-env allow NAME host [host...]');
       const vault = Vault.open();
-      vault.setAllow(name, clear ? [] : hosts.flatMap((h) => h.split(',')));
-      const now = vault.entries.get(name).allow;
+      if (!vault.has(name)) throw new Error(`no key named ${name}`);
+      const wanted = clear ? [] : hosts.flatMap((h) => h.split(','));
+      const adding = vault.newHosts(name, wanted);
+      if (adding.length) {
+        // Adding a site always needs the user's OK, even when an AI runs this.
+        if (canPromptInWindow()) console.error('A confirmation window opened on your screen.');
+        const ok = await confirmNewHosts(name, adding, { description: vault.entries.get(name).description });
+        if (!ok) throw new PromptCancelled(`${adding.join(', ')} not allowed, nothing changed`);
+      }
+      vault.setAllow(name, wanted);
+      const now = vault.trustedAllow(name);
       console.log(now.length ? `${name} may be sent to: ${now.join(', ')}` : `${name} may not be sent to any host.`);
       break;
     }
