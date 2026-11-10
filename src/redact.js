@@ -25,7 +25,19 @@ function variants(value) {
   add(buf.toString('base64url'), 'base64');
   add(hex, 'hex');
   add(hex.toUpperCase(), 'hex');
-  add(encodeURIComponent(value), 'url-encoded');
+  // URL encodings differ between languages and libraries: space as %20 or +,
+  // whether !'()*~ are encoded, and upper or lower case hex. Cover the common ones.
+  const strict = (s) => s.replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+  const urlForms = new Set([
+    encodeURIComponent(value), // JavaScript
+    strict(encodeURIComponent(value)), // RFC 3986, PHP rawurlencode
+    strict(encodeURIComponent(value)).replace(/%7E/g, '~'), // Python quote
+    new URLSearchParams({ v: value }).toString().slice(2), // HTML forms, URLSearchParams
+    encodeURI(value),
+  ]);
+  for (const u of [...urlForms]) urlForms.add(u.replace(/%20/g, '+')); // Python quote_plus, PHP urlencode
+  for (const u of [...urlForms]) urlForms.add(u.replace(/%[0-9A-F]{2}/g, (h) => h.toLowerCase()));
+  for (const u of urlForms) add(u, 'url-encoded');
   return forms;
 }
 

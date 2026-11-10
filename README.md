@@ -147,10 +147,14 @@ blind-env allow GITHUB_TOKEN api.github.com
 - `allow` sets the whole list, so name every site you want.
 - `*.github.com` covers every subdomain (not `github.com` itself).
 - `blind-env allow NAME --clear` removes all sites.
-- **Adding a site always asks you first**, in a confirmation window on Windows
-  (or a y/N question in a terminal elsewhere), even when an AI runs the command.
-  Enter means Cancel; approving takes a click on Allow. Removing sites needs no
-  confirmation.
+- **Adding a site to a saved secret always asks you first**, in a confirmation
+  window on Windows (or a y/N question in a terminal elsewhere), even when an
+  AI runs the command. Enter means Cancel; approving takes a click on Allow.
+  Removing sites needs no confirmation.
+- `set NAME --allow site` sets the sites together with a **new** value, so no
+  window asks about them: a value already stored is never sent anywhere new
+  this way. When you type the new value in the password window, new sites are
+  marked `NEW` there.
 - The list is protected by the encryption: if someone adds a site by editing
   `.aienv` by hand, that key stops working instead of being sent there.
 
@@ -166,13 +170,13 @@ For Claude Code, in your project folder:
 claude mcp add blind-env -- blind-env mcp
 ```
 
-The agent gets four tools:
+The agent gets six tools:
 
 | Tool | What it does |
 |------|--------------|
 | `list_keys` | Which vault file is in use, plus names, descriptions, allowed hosts. Never values. |
 | `add_key` | Opens a private window where **you** type the value. |
-| `run_with_secrets` | Runs a command with the chosen keys as environment variables (in `cmd.exe` on Windows, so `%NAME%`). Output is cleaned. |
+| `run_with_secrets` | Runs a command with the chosen keys as environment variables (in `cmd.exe` on Windows, so `%NAME%`). Output is cleaned. The command also gets the AI app's own environment variables, which blind-env does not hide. |
 | `http_request` | Sends a web request with `{{KEY_NAME}}` filled in. Only to allowed hosts, HTTPS only, redirects not followed, response cleaned. |
 | `allow_hosts` | Adds or removes allowed sites for a key. Adding opens a confirmation window; nothing changes unless **you** click Allow. |
 | `remove_key` | Deletes a secret. Opens a confirmation window; nothing is deleted unless **you** click Delete. |
@@ -216,7 +220,9 @@ Other limits:
 
 - Values must be at least 8 characters. Hiding a short value gives it away
   (`test` masked inside `testing` shows what it is), so shorter ones are
-  refused unless you run `blind-env set NAME --allow-short` yourself.
+  refused unless `--allow-short` is given. Only use that for things that
+  really are short, like a PIN: a short value is easy to spot in output, and
+  values under 4 characters are not hidden at all.
   Key names are never masked, even when a value appears inside one.
 - The vault only opens on the computer and account that created it. On a new
   machine, add the secrets again.

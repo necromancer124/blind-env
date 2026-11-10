@@ -163,6 +163,21 @@ test('redact: plain value and common encodings', () => {
   assert.equal(out, 'a ***PW*** b ***PW:base64*** c ***PW:hex*** d ***PW:url-encoded*** e');
 });
 
+test('redact: URL encodings from different languages (space as +, lower-case hex, Python)', () => {
+  const secret = `abc/def+"q" \path 1234567890~*!'()`;
+  const r = createRedactor({ K: secret });
+  const forms = [
+    new URLSearchParams({ k: secret }).toString().slice(2),
+    encodeURIComponent(secret),
+    encodeURIComponent(secret).toLowerCase(),
+    encodeURIComponent(secret).replace(/%20/g, '+'),
+    encodeURIComponent(secret).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase()),
+  ];
+  for (const f of forms) {
+    assert.equal(r.all(`x=${f}&y=1`), 'x=***K:url-encoded***&y=1', f);
+  }
+});
+
 test('redact: a secret split across chunks, at every possible split point', () => {
   const secret = 'sk-live-ABCDEFGH';
   const text = `start ${secret} middle ${secret}${secret} end`;

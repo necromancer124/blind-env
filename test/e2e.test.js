@@ -237,6 +237,33 @@ test('mcp (as plugin): never uses its own install folder, uses the project inste
   assert.ok(!fs.existsSync(path.join(pluginRoot, '.aienv')));
 });
 
+test('mcp: bad messages get an error and never stop the server', () => {
+  const lines = [
+    'null',
+    '5',
+    '[]',
+    'not json',
+    JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'constructor' } }),
+    JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: null }),
+    JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_keys', arguments: 'oops' } }),
+    JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'ping' }),
+  ];
+  const r = spawnSync(process.execPath, [CLI, 'mcp'], {
+    cwd: project,
+    env,
+    input: lines.join('\n') + '\n',
+    encoding: 'utf8',
+    timeout: 20000,
+  });
+  assert.equal(r.status, 0, r.stderr);
+  const replies = r.stdout.trim().split('\n').map((l) => JSON.parse(l));
+  assert.equal(replies.filter((m) => m.id === null && m.error).length, 4);
+  assert.ok(replies.find((m) => m.id === 1).error);
+  assert.ok(replies.find((m) => m.id === 2).error);
+  assert.match(replies.find((m) => m.id === 3).result.content[0].text, /^Vault: /);
+  assert.deepEqual(replies.find((m) => m.id === 4).result, {});
+});
+
 test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
   // CLAUDE_PROJECT_DIR points at a different, empty folder (like a session
   // that started somewhere else). The server must still use the project vault.

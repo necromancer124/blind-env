@@ -58,7 +58,8 @@ const TOOLS = [
       'Run a shell command with the named secrets set as environment variables (same names as the keys). ' +
       `The command runs in ${process.platform === 'win32' ? 'cmd.exe, so read a variable as %NAME% (not $NAME)' : '/bin/sh, so read a variable as $NAME'}; ` +
       'it is often easier to read it inside a script (process.env.NAME, os.environ["NAME"]). ' +
-      'Runs in the vault folder unless cwd is given. ' +
+      "Runs in the vault folder unless cwd is given. The command also inherits this app's own environment " +
+      'variables (not blind-env secrets, so they are NOT hidden): do not print the whole environment. ' +
       'Returns the exit code and output; secret values in the output are replaced with ***NAME***.',
     inputSchema: {
       type: 'object',
@@ -321,10 +322,11 @@ export async function serveMcp() {
       case 'tools/list':
         return reply({ tools: TOOLS });
       case 'tools/call': {
-        const handler = handlers[params?.name];
-        if (!handler) return fail(-32602, `unknown tool: ${params?.name}`);
+        const name = params?.name;
+        if (typeof name !== 'string' || !Object.hasOwn(handlers, name)) return fail(-32602, `unknown tool: ${name}`);
+        const args = params.arguments;
         try {
-          const text = await handler(params.arguments ?? {});
+          const text = await handlers[name](args && typeof args === 'object' && !Array.isArray(args) ? args : {});
           return reply({ content: [{ type: 'text', text }] });
         } catch (err) {
           return reply({ content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true });
@@ -334,6 +336,12 @@ export async function serveMcp() {
         if (isRequest) fail(-32601, `method not found: ${method}`);
     }
   }
+
+  // One bad message must never take the whole server down: the client would
+  // only see "Connection closed".
+  const logError = (err) => process.stderr.write(`blind-env mcp: ${err?.stack || err}\n`);
+  process.on('unhandledRejection', logError);
+  process.on('uncaughtException', logError);
 
   const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
   const pending = new Set();
@@ -345,7 +353,17 @@ export async function serveMcp() {
     } catch {
       return send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'parse error' } });
     }
-    const p = handle(msg).finally(() => pending.delete(p));
+    if (!msg || typeof msg !== 'object' || Array.isArray(msg)) {
+      return send({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'invalid request' } });
+    }
+    const p = handle(msg)
+      .catch((err) => {
+        logError(err);
+        if (msg.id !== undefined && msg.id !== null) {
+          send({ jsonrpc: '2.0', id: msg.id, error: { code: -32603, message: 'internal error' } });
+        }
+      })
+      .finally(() => pending.delete(p));
     pending.add(p);
   });
   await new Promise((resolve) => rl.on('close', resolve));
