@@ -146,6 +146,24 @@ test('redact: several secrets, and the mask is never redacted again', () => {
   assert.equal(r.all('x TOKEN_VALUE_1 y TOKEN z'), 'x ***TOKEN*** y ***NAME*** z');
 });
 
+test('redact: a value inside a key name is not masked there (that would give it away)', () => {
+  const r = createRedactor({ testCloadSesh: 'test' });
+  assert.equal(r.all('echo $testCloadSesh'), 'echo $testCloadSesh');
+  assert.equal(r.all('testCloadSesh=test'), 'testCloadSesh=***testCloadSesh***');
+  assert.deepEqual(r.hits(), {});
+  // Same rule on a stream split inside the name.
+  const s = createRedactor({ testCloadSesh: 'test' });
+  assert.equal(s.push('$testClo') + s.push('adSesh test') + s.flush(), '$testCloadSesh ***testCloadSesh***');
+});
+
+test('vault: values shorter than 8 characters are refused unless allowed', () => {
+  const vault = Vault.init(tmpProject());
+  assert.throws(() => vault.set('PIN', '1234'), (e) => e.code === 'SHORT_VALUE' && !e.message.includes('1234'));
+  assert.equal(vault.has('PIN'), false);
+  vault.set('PIN', '1234', { allowShort: true });
+  assert.equal(vault.reveal(['PIN']).PIN, '1234');
+});
+
 test('redact: very short values are left alone', () => {
   assert.equal(createRedactor({ PIN: 'abc' }).all('abc abcabc'), 'abc abcabc');
 });

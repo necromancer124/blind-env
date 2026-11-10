@@ -39,6 +39,12 @@ export function createRedactor(secrets) {
       patterns.push({ text, name, mask: form ? `***${name}:${form}***` : `***${name}***` });
     }
   }
+  // Key names are left alone, even when a value appears inside one: masking
+  // "test" inside "$testCloadSesh" would show what the value is. Added last so
+  // that, at equal length, a real value still wins.
+  for (const name of Object.keys(secrets)) {
+    patterns.push({ text: name, keep: true });
+  }
   patterns.sort((a, b) => b.text.length - a.text.length);
   const hold = patterns.length ? patterns[0].text.length - 1 : 0;
 
@@ -65,8 +71,12 @@ export function createRedactor(secrets) {
         i = limit;
         break;
       }
-      out += buf.slice(i, at) + hit.mask;
-      hits[hit.name] = (hits[hit.name] ?? 0) + 1;
+      if (hit.keep) {
+        out += buf.slice(i, at) + hit.text;
+      } else {
+        out += buf.slice(i, at) + hit.mask;
+        hits[hit.name] = (hits[hit.name] ?? 0) + 1;
+      }
       i = at + hit.text.length;
     }
     buf = buf.slice(i);

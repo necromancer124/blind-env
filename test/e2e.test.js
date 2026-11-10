@@ -76,6 +76,18 @@ test('cli: set (stdin), list, and the vault file hides the value', () => {
   assert.ok(!(r.stdout + r.stderr).includes(SECRET));
 });
 
+test('cli: a short value is refused unless --allow-short is given', () => {
+  let r = cli(['set', 'SHORT_KEY', '--stdin'], 'abc12');
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /only 5 characters/);
+  assert.ok(!r.stderr.includes('abc12'));
+  r = cli(['set', 'SHORT_KEY', '--stdin', '--allow-short'], 'abc12');
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /Warning: SHORT_KEY is short/);
+  assert.match(cli(['check', 'SHORT_KEY']).stdout, /length 5 .*\(short: cannot be hidden safely\)/);
+  assert.equal(cli(['rm', 'SHORT_KEY']).status, 0);
+});
+
 test('cli: a value on the command line is refused', () => {
   const r = cli(['set', 'OOPS', 'my-value']);
   assert.equal(r.status, 1);
@@ -171,7 +183,14 @@ test('cli: allow and rm', () => {
 });
 
 test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
-  const child = spawn(process.execPath, [CLI, 'mcp'], { cwd: project, env, stdio: ['pipe', 'pipe', 'inherit'] });
+  // CLAUDE_PROJECT_DIR points at a different, empty folder (like a session
+  // that started somewhere else). The server must still use the project vault.
+  const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-elsewhere-'));
+  const child = spawn(process.execPath, [CLI, 'mcp'], {
+    cwd: project,
+    env: { ...env, CLAUDE_PROJECT_DIR: elsewhere },
+    stdio: ['pipe', 'pipe', 'inherit'],
+  });
   const waiting = new Map();
   let buffer = '';
   let everything = '';
@@ -205,9 +224,13 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
 
     const tools = await request('tools/list', {});
     assert.deepEqual(tools.result.tools.map((t) => t.name).sort(), ['add_key', 'http_request', 'list_keys', 'run_with_secrets']);
+    const runTool = tools.result.tools.find((t) => t.name === 'run_with_secrets');
+    assert.match(runTool.description, process.platform === 'win32' ? /cmd\.exe.*%NAME%/ : /\/bin\/sh/);
 
     const list = await call('list_keys', {});
+    assert.equal(list.text.split('\n')[0], `Vault: ${path.join(project, '.aienv')}`);
     assert.match(list.text, /API_KEY\n {2}description: test api key\n {2}allowed hosts: 127\.0\.0\.1/);
+    assert.ok(!fs.existsSync(path.join(elsewhere, '.aienv')));
 
     const run = await call('run_with_secrets', { command: `"${process.execPath}" child.js`, keys: ['API_KEY'] });
     assert.match(run.text, /^blind-env: note: hid the value of API_KEY \(3x\).*\nexit code 7\n/);

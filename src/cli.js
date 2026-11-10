@@ -11,7 +11,7 @@ import {
 } from './prompt.js';
 import { MIN_REDACT_LENGTH, describeHits, leakMessage } from './redact.js';
 import { runStreaming } from './run.js';
-import { Vault } from './vault.js';
+import { MIN_VALUE_LENGTH, Vault } from './vault.js';
 
 const VERSION = '0.1.0';
 const LEAK_EXIT_CODE = 97;
@@ -26,6 +26,7 @@ Usage:
       --desc "text"                      what the secret is for (the AI can read this)
       --allow host1,host2                hosts it may be sent to in web requests
       --stdin                            read the value from stdin instead of asking
+      --allow-short                      accept a value shorter than 8 characters
   blind-env list [--json]                show names, notes and allowed hosts
   blind-env rm NAME                      delete a secret
   blind-env allow NAME host [host...]    set the hosts a secret may be sent to
@@ -70,6 +71,7 @@ async function cmdSet(args) {
   const description = takeOption(args, '--desc');
   const allowText = takeOption(args, '--allow');
   const fromStdin = takeFlag(args, '--stdin');
+  const allowShort = takeFlag(args, '--allow-short');
   const [name, extra] = args;
   if (!name) throw new Error('usage: blind-env set NAME [--desc "text"] [--allow host,host]');
   if (extra !== undefined) {
@@ -104,10 +106,12 @@ async function cmdSet(args) {
     throw new Error(`no terminal to ask in. Run "blind-env set ${name}" yourself in a terminal.`);
   }
 
-  vault.set(name, value, { description, allow });
+  vault.set(name, value, { description, allow, allowShort });
   console.log(`Saved ${name}.`);
   if (value.length < MIN_REDACT_LENGTH) {
-    console.error(`Warning: ${name} is shorter than ${MIN_REDACT_LENGTH} characters, so it cannot be hidden in program output.`);
+    console.error(`Warning: ${name} is shorter than ${MIN_REDACT_LENGTH} characters, so it is not hidden in program output at all.`);
+  } else if (value.length < MIN_VALUE_LENGTH) {
+    console.error(`Warning: ${name} is short, so where it is hidden in output, the hiding can give it away.`);
   }
 }
 
@@ -197,7 +201,8 @@ async function main() {
       for (const name of names) {
         try {
           const info = vault.inspect(name);
-          console.log(`${name.padEnd(width)}  ok      length ${info.length}  fingerprint ${info.fingerprint}`);
+          const short = info.length < MIN_VALUE_LENGTH ? '  (short: cannot be hidden safely)' : '';
+          console.log(`${name.padEnd(width)}  ok      length ${info.length}  fingerprint ${info.fingerprint}${short}`);
         } catch (err) {
           console.log(`${name.padEnd(width)}  FAILED  ${err.message}`);
           process.exitCode = 1;

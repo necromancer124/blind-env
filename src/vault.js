@@ -12,6 +12,12 @@ import {
 } from './format.js';
 import { loadKey, saveKey } from './keystore.js';
 
+/**
+ * Shorter values are refused unless the user allows it. Hiding a short value
+ * in output gives it away: "test" masked inside "testing" shows what it is.
+ */
+export const MIN_VALUE_LENGTH = 8;
+
 export class Vault {
   constructor(file, data) {
     this.file = file;
@@ -95,9 +101,18 @@ export class Vault {
     }
   }
 
-  set(name, value, { description, allow } = {}) {
+  set(name, value, { description, allow, allowShort = false } = {}) {
     Vault.check(name, allow);
     if (typeof value !== 'string' || value.length === 0) throw new Error('the value is empty');
+    if (value.length < MIN_VALUE_LENGTH && !allowShort) {
+      const err = new Error(
+        `${name} is only ${value.length} characters. Values shorter than ${MIN_VALUE_LENGTH} cannot be hidden ` +
+          'safely in output (the hiding itself gives them away). Use a longer value, or if it really is short ' +
+          `(like a PIN), run "blind-env set ${name} --allow-short" in a terminal.`
+      );
+      err.code = 'SHORT_VALUE';
+      throw err;
+    }
     const old = this.entries.get(name);
     this.entries.set(name, {
       name,

@@ -5,7 +5,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { httpRequest } from './http.js';
 import { PromptCancelled, canPromptInWindow, describeKeyForPrompt, promptWindow } from './prompt.js';
-import { MIN_REDACT_LENGTH, leakMessage } from './redact.js';
+import { leakMessage } from './redact.js';
 import { runCaptured } from './run.js';
 import { Vault } from './vault.js';
 
@@ -48,6 +48,9 @@ const TOOLS = [
     name: 'run_with_secrets',
     description:
       'Run a shell command with the named secrets set as environment variables (same names as the keys). ' +
+      `The command runs in ${process.platform === 'win32' ? 'cmd.exe, so read a variable as %NAME% (not $NAME)' : '/bin/sh, so read a variable as $NAME'}; ` +
+      'it is often easier to read it inside a script (process.env.NAME, os.environ["NAME"]). ' +
+      'Runs in the vault folder unless cwd is given. ' +
       'Returns the exit code and output; secret values in the output are replaced with ***NAME***.',
     inputSchema: {
       type: 'object',
@@ -80,7 +83,25 @@ const TOOLS = [
 ];
 
 export async function serveMcp() {
-  const startDir = process.env.BLIND_ENV_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  // Which vault? BLIND_ENV_DIR if set. Otherwise the server's own folder
+  // first (a project .mcp.json starts us there), then CLAUDE_PROJECT_DIR,
+  // which can still point at the folder a session started in.
+  function locate() {
+    if (process.env.BLIND_ENV_DIR) {
+      return { file: Vault.find(process.env.BLIND_ENV_DIR), createIn: process.env.BLIND_ENV_DIR };
+    }
+    const dirs = [process.cwd(), process.env.CLAUDE_PROJECT_DIR].filter(Boolean);
+    for (const dir of dirs) {
+      const file = Vault.find(dir);
+      if (file) return { file, createIn: dir };
+    }
+    return { file: null, createIn: dirs[0] };
+  }
+  function openVault() {
+    const { file } = locate();
+    if (!file) throw new Error('there is no vault yet. Call add_key to create one.');
+    return withKeyCache(Vault.load(file));
+  }
   const keyCache = new Map(); // vault id -> master key, so we unlock once per session
   let promptQueue = Promise.resolve();
 
@@ -94,11 +115,11 @@ export async function serveMcp() {
 
   const handlers = {
     async list_keys() {
-      const file = Vault.find(startDir);
-      if (!file) return 'There is no vault yet. Call add_key to create one and add the first secret.';
+      const { file, createIn } = locate();
+      if (!file) return `There is no vault yet (add_key would create one in ${createIn}).`;
       const keys = Vault.load(file).list();
-      if (!keys.length) return 'The vault is empty. Call add_key to add a secret.';
-      return keys
+      if (!keys.length) return `Vault: ${file}\nThe vault is empty. Call add_key to add a secret.`;
+      return `Vault: ${file}\n` + keys
         .map((k) => {
           const allow = k.allow.length ? k.allow.join(', ') : 'none (cannot be used with http_request)';
           return `${k.name}\n  description: ${k.description || '-'}\n  allowed hosts: ${allow}`;
@@ -114,7 +135,9 @@ export async function serveMcp() {
       }
       // One window at a time.
       const turn = promptQueue.then(async () => {
-        const vault = withKeyCache(Vault.openOrInit(startDir));
+        const { file, createIn } = locate();
+        const created = !file;
+        const vault = withKeyCache(file ? Vault.load(file) : Vault.init(createIn));
         const old = vault.entries.get(name);
         const value = await promptWindow(
           name,
@@ -126,13 +149,14 @@ export async function serveMcp() {
           180
         );
         const fresh = withKeyCache(Vault.load(vault.file));
-        fresh.set(name, value, { description, allow });
+        try {
+          fresh.set(name, value, { description, allow });
+        } catch (err) {
+          if (err.code === 'SHORT_VALUE') return `Not saved: ${err.message}`;
+          throw err;
+        }
         remember(fresh);
-        const warn =
-          value.length < MIN_REDACT_LENGTH
-            ? ` Warning: it is shorter than ${MIN_REDACT_LENGTH} characters, so it cannot be hidden in program output.`
-            : '';
-        return `Saved ${name}.${warn}`;
+        return `${created ? `Created a new vault at ${fresh.file}. ` : ''}Saved ${name} to ${fresh.file}.`;
       });
       promptQueue = turn.catch(() => {});
       try {
@@ -146,11 +170,12 @@ export async function serveMcp() {
     async run_with_secrets({ command, keys, cwd, timeout_seconds }) {
       if (typeof command !== 'string' || !command.trim()) throw new Error('command is required');
       if (!Array.isArray(keys) || !keys.length) throw new Error('keys must list at least one key name');
-      const vault = withKeyCache(Vault.open(startDir));
+      const vault = openVault();
       const secrets = vault.reveal(keys);
       remember(vault);
+      const vaultDir = path.dirname(vault.file);
       const result = await runCaptured(command, secrets, {
-        cwd: cwd ? path.resolve(startDir, cwd) : startDir,
+        cwd: cwd ? path.resolve(vaultDir, cwd) : vaultDir,
         timeoutMs: Math.min(Math.max(Number(timeout_seconds) || 120, 1), 3600) * 1000,
       });
       if (result.startError) throw new Error(`could not start the command: ${result.startError}`);
@@ -162,7 +187,7 @@ export async function serveMcp() {
 
     async http_request(args) {
       if (typeof args.url !== 'string') throw new Error('url is required');
-      const vault = withKeyCache(Vault.open(startDir));
+      const vault = openVault();
       const res = await httpRequest(vault, args);
       remember(vault);
       const headers = Object.entries(res.headers)

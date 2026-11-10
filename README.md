@@ -125,9 +125,9 @@ The agent gets four tools:
 
 | Tool | What it does |
 |------|--------------|
-| `list_keys` | Names, descriptions, allowed hosts. Never values. |
+| `list_keys` | Which vault file is in use, plus names, descriptions, allowed hosts. Never values. |
 | `add_key` | Opens a private window where **you** type the value. |
-| `run_with_secrets` | Runs a command with the chosen keys as environment variables. Output is cleaned. |
+| `run_with_secrets` | Runs a command with the chosen keys as environment variables (in `cmd.exe` on Windows, so `%NAME%`). Output is cleaned. |
 | `http_request` | Sends a web request with `{{KEY_NAME}}` filled in. Only to allowed hosts, HTTPS only, redirects not followed, response cleaned. |
 
 This repo is also laid out as a Claude Code plugin (`.claude-plugin/`), which
@@ -158,7 +158,10 @@ real barrier.
 
 Other limits:
 
-- Values shorter than 4 characters cannot be hidden in output.
+- Values must be at least 8 characters. Hiding a short value gives it away
+  (`test` masked inside `testing` shows what it is), so shorter ones are
+  refused unless you run `blind-env set NAME --allow-short` yourself.
+  Key names are never masked, even when a value appears inside one.
 - The vault only opens on the computer and account that created it. On a new
   machine, add the secrets again.
 - The password window exists on Windows only. On macOS and Linux use
