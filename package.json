@@ -12,6 +12,5 @@
   "engines": {
     "node": ">=20"
   },
-  "os": ["win32"],
   "license": "MIT"
 }

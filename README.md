@@ -14,9 +14,11 @@ AI:   ▶ http_request  Authorization: Bearer {{GITHUB_TOKEN}}
         and hides the token in whatever comes back
 ```
 
-**Status: v0.1 preview, Windows only.** It needs Node 20 or newer and has no
-other dependencies. macOS and Linux are not supported yet (no password window,
-no OS key protection, untested).
+**Status: v0.1 preview. Windows for now; macOS and Linux are planned.** It
+needs Node 20 or newer and has no other dependencies. On macOS and Linux the
+command line works but is untested, there is no password window yet (use
+`blind-env set NAME` in a terminal), and the key file is protected only by file
+permissions instead of the OS keychain.
 
 ## How it works
 
