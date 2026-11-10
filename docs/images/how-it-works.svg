@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-label="How blind-env works: the AI uses key names, blind-env fills in the real values for programs and allowed APIs, and output comes back with values hidden">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#94a3b8"/>
+    </marker>
+    <marker id="t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#2dd4bf"/>
+    </marker>
+    <marker id="y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#fbbf24"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-family: 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif; fill: #e2e8f0; }
+    .s { font-family: 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif; fill: #94a3b8; font-size: 16px; }
+    .h { font-size: 21px; font-weight: 700; }
+    .m { font-family: Consolas, 'SF Mono', Menlo, 'Courier New', monospace; font-size: 15px; }
+    .box { fill: #111a2e; stroke: #334155; stroke-width: 1.5; }
+    .core { fill: #0f2a2a; stroke: #2dd4bf; stroke-width: 2; }
+    .lbl { font-family: 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif; font-size: 15px; }
+  </style>
+  <rect width="1200" height="560" rx="24" fill="#0b1220"/>
+
+  <!-- AI agent -->
+  <rect class="box" x="40" y="150" width="270" height="200" rx="16"/>
+  <text class="t h" x="62" y="188">AI agent</text>
+  <text class="s" x="62" y="214">Claude Code, Cursor, ...</text>
+  <text class="s" x="62" y="252">Sees: key names, notes,</text>
+  <text class="s" x="62" y="274">allowed sites</text>
+  <text class="m" x="62" y="312" fill="#fbbf24">***GITHUB_TOKEN***</text>
+
+  <!-- blind-env -->
+  <rect class="core" x="440" y="110" width="320" height="280" rx="18"/>
+  <text class="t h" x="464" y="150">blind-env</text>
+  <text class="s" x="464" y="176">CLI and MCP server</text>
+  <rect class="box" x="464" y="196" width="272" height="74" rx="10"/>
+  <text class="m" x="480" y="224" fill="#5eead4">.aienv</text>
+  <text class="s" x="480" y="250">names readable, values encrypted</text>
+  <rect class="box" x="464" y="284" width="272" height="80" rx="10"/>
+  <text class="m" x="480" y="312" fill="#5eead4">~/.blind-env/keys</text>
+  <text class="s" x="480" y="338">unlock key, outside the project,</text>
+  <text class="s" x="480" y="358">locked to your Windows account</text>
+
+  <!-- program -->
+  <rect class="box" x="890" y="70" width="270" height="130" rx="16"/>
+  <text class="t h" x="912" y="108">Your program</text>
+  <text class="s" x="912" y="134">gets the real value as an</text>
+  <text class="s" x="912" y="156">environment variable</text>
+  <text class="m" x="912" y="184" fill="#cbd5e1">process.env.GITHUB_TOKEN</text>
+
+  <!-- API -->
+  <rect class="box" x="890" y="250" width="270" height="110" rx="16"/>
+  <text class="t h" x="912" y="288">Allowed APIs</text>
+  <text class="m" x="912" y="316" fill="#cbd5e1">api.github.com</text>
+  <text class="s" x="912" y="342">HTTPS only, no redirects</text>
+
+  <!-- blocked -->
+  <rect x="890" y="395" width="270" height="60" rx="16" fill="#2a1215" stroke="#f87171" stroke-width="1.5"/>
+  <text class="m" x="912" y="431" fill="#fca5a5">evil-site.com  BLOCKED</text>
+
+  <!-- you -->
+  <rect class="box" x="440" y="450" width="320" height="80" rx="16"/>
+  <text class="t h" x="464" y="484">You</text>
+  <text class="s" x="464" y="510">type values, approve sites and deletes</text>
+
+  <!-- arrows: AI -> blind-env -->
+  <line x1="310" y1="215" x2="436" y2="215" stroke="#94a3b8" stroke-width="2" marker-end="url(#a)"/>
+  <text class="lbl" x="322" y="204" fill="#cbd5e1">use GITHUB_TOKEN</text>
+  <!-- blind-env -> AI (hidden output) -->
+  <line x1="436" y1="290" x2="314" y2="290" stroke="#fbbf24" stroke-width="2" marker-end="url(#y)"/>
+  <text class="lbl" x="322" y="318" fill="#fbbf24">values hidden</text>
+
+  <!-- blind-env -> program -->
+  <path d="M 760 170 C 820 170 830 135 886 135" fill="none" stroke="#2dd4bf" stroke-width="2" marker-end="url(#t)"/>
+  <text class="lbl" x="776" y="194" fill="#5eead4">real value</text>
+  <!-- blind-env -> API -->
+  <path d="M 760 300 L 886 300" fill="none" stroke="#2dd4bf" stroke-width="2" marker-end="url(#t)"/>
+  <text class="lbl" x="776" y="290" fill="#5eead4">real value</text>
+  <!-- blind-env -> blocked -->
+  <path d="M 760 360 C 820 360 830 425 886 425" fill="none" stroke="#f87171" stroke-width="2" stroke-dasharray="6 6"/>
+
+  <!-- you -> blind-env -->
+  <line x1="600" y1="448" x2="600" y2="394" stroke="#94a3b8" stroke-width="2" marker-end="url(#a)"/>
+
+  <text class="s" x="40" y="60">The real value only goes to your program or to sites you allowed. The AI only ever gets names and ***masks***.</text>
+</svg>

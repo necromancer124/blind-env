@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-label="Terminal demo: saving a secret, listing it, running a program whose output shows ***GITHUB_TOKEN*** instead of the value, and checking it">
+  <style>
+    .m { font-family: Consolas, 'SF Mono', Menlo, 'Courier New', monospace; font-size: 17px; white-space: pre; }
+    text, tspan { white-space: pre; }
+    .p { fill: #5eead4; }
+    .c { fill: #f8fafc; }
+    .o { fill: #94a3b8; }
+    .y { fill: #fbbf24; }
+    .g { fill: #4ade80; }
+  </style>
+  <rect width="1200" height="430" rx="16" fill="#0b1220"/>
+  <rect width="1200" height="40" rx="16" fill="#1b2740"/>
+  <rect y="24" width="1200" height="16" fill="#1b2740"/>
+  <circle cx="26" cy="20" r="7" fill="#f87171"/>
+  <circle cx="50" cy="20" r="7" fill="#fbbf24"/>
+  <circle cx="74" cy="20" r="7" fill="#4ade80"/>
+  <text x="600" y="26" text-anchor="middle" class="m o" font-size="14">my-project</text>
+
+  <g class="m">
+    <text x="24" y="78"><tspan class="p">$</tspan><tspan class="c"> blind-env set GITHUB_TOKEN --desc "Token for the GitHub API" --allow api.github.com</tspan></text>
+    <text x="24" y="104" class="o">Value for GITHUB_TOKEN (hidden):</text>
+    <text x="24" y="130" class="g">Saved GITHUB_TOKEN.</text>
+
+    <text x="24" y="172"><tspan class="p">$</tspan><tspan class="c"> blind-env list</tspan></text>
+    <text x="24" y="198" class="o">GITHUB_TOKEN  Token for the GitHub API  [allowed: api.github.com]</text>
+
+    <text x="24" y="240"><tspan class="p">$</tspan><tspan class="c"> blind-env run -- node app.js</tspan></text>
+    <text x="24" y="266"><tspan class="o">[debug] connecting with token </tspan><tspan class="y">***GITHUB_TOKEN***</tspan></text>
+    <text x="24" y="292"><tspan class="o">[debug] as base64: </tspan><tspan class="y">***GITHUB_TOKEN:base64***</tspan></text>
+    <text x="24" y="318" class="o">blind-env: note: hid the value of GITHUB_TOKEN (2x) in the output.</text>
+
+    <text x="24" y="360"><tspan class="p">$</tspan><tspan class="c"> blind-env check</tspan></text>
+    <text x="24" y="386"><tspan class="o">GITHUB_TOKEN  </tspan><tspan class="g">ok</tspan><tspan class="o">      length 40  fingerprint 7c2e91d4</tspan></text>
+  </g>
+</svg>
