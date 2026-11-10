@@ -279,9 +279,33 @@ export async function confirmNewHosts(name, hosts, { description } = {}) {
   ]
     .filter(Boolean)
     .join('\n');
-  if (canPromptInWindow()) return confirmWindow({ title, details });
+  return confirmAction({ title, details, okText: 'Allow' });
+}
+
+/**
+ * Ask the user to approve something. Resolves true or false.
+ * On Windows this is always a window, even from a terminal, so a program that
+ * types into a terminal cannot answer it.
+ */
+export async function confirmAction({ title, details, okText }) {
+  if (canPromptInWindow()) return confirmWindow({ title, details, okText });
   if (canPromptInTerminal()) return confirmTerminal(`${title}\n${details}\n`);
   throw new PromptCancelled('there is no window or terminal to ask the user in');
+}
+
+/** Ask the user to approve deleting a key. Resolves true or false. */
+export function confirmDelete(name, { description } = {}) {
+  return confirmAction({
+    title: `Delete the secret ${name}?`,
+    details: [
+      description ? `${name}: ${description}` : null,
+      'It is removed from this vault and cannot be recovered. Code that uses it will stop working.',
+      'If you did not ask for this, click Cancel.',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    okText: 'Delete',
+  });
 }
 
 export function describeKeyForPrompt({ description, allow, replacing }) {

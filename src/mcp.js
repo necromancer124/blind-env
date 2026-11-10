@@ -7,6 +7,7 @@ import { httpRequest } from './http.js';
 import {
   PromptCancelled,
   canPromptInWindow,
+  confirmDelete,
   confirmNewHosts,
   describeKeyForPrompt,
   promptWindow,
@@ -85,6 +86,17 @@ const TOOLS = [
         body: { type: 'string' },
       },
       required: ['url'],
+    },
+  },
+  {
+    name: 'remove_key',
+    description:
+      "Delete a secret from the vault. Opens a confirmation window on the user's screen; nothing is deleted " +
+      'unless the user clicks Delete. Only do this when the user asked for it.',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: 'Key name' } },
+      required: ['name'],
     },
   },
   {
@@ -202,6 +214,23 @@ export async function serveMcp() {
         if (err instanceof PromptCancelled) return `Not saved: ${err.message}.`;
         throw err;
       }
+    },
+
+    async remove_key({ name }) {
+      const vault = openVault();
+      if (!vault.has(name)) throw new Error(`no key named ${name}`);
+      const turn = promptQueue.then(() => confirmDelete(name, { description: vault.entries.get(name).description }));
+      promptQueue = turn.catch(() => {});
+      let approved;
+      try {
+        approved = await turn;
+      } catch (err) {
+        if (err instanceof PromptCancelled) return `Not deleted: ${err.message}.`;
+        throw err;
+      }
+      if (!approved) return `Not deleted: the user did not confirm.`;
+      Vault.load(vault.file).remove(name);
+      return `Deleted ${name}.`;
     },
 
     async allow_hosts({ name, add = [], remove = [] }) {

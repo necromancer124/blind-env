@@ -154,7 +154,8 @@ blind-env allow GITHUB_TOKEN api.github.com
 - The list is protected by the encryption: if someone adds a site by editing
   `.aienv` by hand, that key stops working instead of being sent there.
 
-Other commands: `blind-env rm NAME`, `blind-env help`.
+Delete a secret with `blind-env rm NAME`. That also asks you first, because it
+cannot be undone. Help: `blind-env help`.
 
 ## Use it from an AI agent (MCP server)
 
@@ -174,9 +175,11 @@ The agent gets four tools:
 | `run_with_secrets` | Runs a command with the chosen keys as environment variables (in `cmd.exe` on Windows, so `%NAME%`). Output is cleaned. |
 | `http_request` | Sends a web request with `{{KEY_NAME}}` filled in. Only to allowed hosts, HTTPS only, redirects not followed, response cleaned. |
 | `allow_hosts` | Adds or removes allowed sites for a key. Adding opens a confirmation window; nothing changes unless **you** click Allow. |
+| `remove_key` | Deletes a secret. Opens a confirmation window; nothing is deleted unless **you** click Delete. |
 
 This repo is also laid out as a Claude Code plugin (`.claude-plugin/`), which
-adds the `/addKey`, `/keys` and `/allowSite KEY host` commands. If you open this
+adds the `/addKey`, `/keys`, `/removeKey`, `/allowSite KEY host` and
+`/removeSite KEY host` commands. If you open this
 repo itself in Claude Code, `.mcp.json` and `.claude/commands/` give you the
 server and the commands
 without installing anything. Start the session in the repo folder itself: a

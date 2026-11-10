@@ -5,6 +5,7 @@ import {
   PromptCancelled,
   canPromptInTerminal,
   canPromptInWindow,
+  confirmDelete,
   confirmNewHosts,
   describeKeyForPrompt,
   promptTerminal,
@@ -29,7 +30,7 @@ Usage:
       --stdin                            read the value from stdin instead of asking
       --allow-short                      accept a value shorter than 8 characters
   blind-env list [--json]                show names, notes and allowed hosts
-  blind-env rm NAME                      delete a secret
+  blind-env rm NAME                      delete a secret (asks you to confirm)
   blind-env allow NAME host [host...]    set the hosts a secret may be sent to
                                          (adding a host asks you to confirm)
   blind-env allow NAME --clear           allow no hosts
@@ -180,9 +181,16 @@ async function main() {
       break;
     case 'rm':
     case 'remove': {
-      if (!args[0]) throw new Error('usage: blind-env rm NAME');
-      Vault.open().remove(args[0]);
-      console.log(`Removed ${args[0]}.`);
+      const name = args[0];
+      if (!name) throw new Error('usage: blind-env rm NAME');
+      const vault = Vault.open();
+      if (!vault.has(name)) throw new Error(`no key named ${name}`);
+      // Deleting cannot be undone, so it always needs the user's OK.
+      if (canPromptInWindow()) console.error('A confirmation window opened on your screen.');
+      const ok = await confirmDelete(name, { description: vault.entries.get(name).description });
+      if (!ok) throw new PromptCancelled(`${name} was not deleted`);
+      Vault.open().remove(name);
+      console.log(`Removed ${name}.`);
       break;
     }
     case 'allow': {

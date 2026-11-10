@@ -86,7 +86,11 @@ test('cli: a short value is refused unless --allow-short is given', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stderr, /Warning: SHORT_KEY is short/);
   assert.match(cli(['check', 'SHORT_KEY']).stdout, /length 5 .*\(short: cannot be hidden safely\)/);
-  assert.equal(cli(['rm', 'SHORT_KEY']).status, 0);
+  // Deleting needs the user's OK; with nobody to confirm, nothing is deleted.
+  const rm = cli(['rm', 'SHORT_KEY']);
+  assert.equal(rm.status, 1);
+  assert.match(rm.stderr, /Cancelled/);
+  assert.match(cli(['list']).stdout, /SHORT_KEY/);
 });
 
 test('cli: a value on the command line is refused', () => {
@@ -274,7 +278,7 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
 
     const tools = await request('tools/list', {});
-    assert.deepEqual(tools.result.tools.map((t) => t.name).sort(), ['add_key', 'allow_hosts', 'http_request', 'list_keys', 'run_with_secrets']);
+    assert.deepEqual(tools.result.tools.map((t) => t.name).sort(), ['add_key', 'allow_hosts', 'http_request', 'list_keys', 'remove_key', 'run_with_secrets']);
     const runTool = tools.result.tools.find((t) => t.name === 'run_with_secrets');
     assert.match(runTool.description, process.platform === 'win32' ? /cmd\.exe.*%NAME%/ : /\/bin\/sh/);
 
@@ -335,6 +339,11 @@ test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
     assert.match(removeSite.text, /may not be sent to any site now/);
     const afterRemove = await call('http_request', { url: `${baseUrl}/echo`, headers: { A: '{{API_KEY}}' } });
     assert.match(afterRemove.text, /BLOCKED/);
+
+    const del = await call('remove_key', { name: 'OTHER_KEY' });
+    assert.match(del.text, /^Not deleted/);
+    assert.match((await call('list_keys', {})).text, /OTHER_KEY/);
+    assert.equal((await call('remove_key', { name: 'NOT_A_KEY' })).isError, true);
 
     const unknown = await request('tools/call', { name: 'get_secret', arguments: {} });
     assert.ok(unknown.error);
