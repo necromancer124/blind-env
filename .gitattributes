@@ -1,0 +1,3 @@
+# Keep LF line endings everywhere, so the CLI's "#!/usr/bin/env node" line
+# works when the package is installed on Linux or macOS.
+* text=auto eol=lf

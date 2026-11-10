@@ -182,6 +182,26 @@ test('cli: allow and rm', () => {
   assert.equal(r.status, 1);
 });
 
+test('mcp (as plugin): never uses its own install folder, uses the project instead', () => {
+  const pluginRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'blind-env-plugin-'));
+  const ask = (extraEnv) => {
+    const input =
+      JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }) + '\n' +
+      JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'list_keys', arguments: {} } }) + '\n';
+    const r = spawnSync(process.execPath, [CLI, 'mcp'], {
+      cwd: pluginRoot,
+      env: { ...env, BLIND_ENV_SKIP_DIR: pluginRoot, ...extraEnv },
+      input,
+      encoding: 'utf8',
+    });
+    const reply = r.stdout.trim().split('\n').map((l) => JSON.parse(l)).find((m) => m.id === 2);
+    return reply.result.content[0].text;
+  };
+  assert.equal(ask({ CLAUDE_PROJECT_DIR: project }).split('\n')[0], `Vault: ${path.join(project, '.aienv')}`);
+  assert.match(ask({}), /cannot tell which project folder to use/);
+  assert.ok(!fs.existsSync(path.join(pluginRoot, '.aienv')));
+});
+
 test('mcp: handshake, tools, run_with_secrets, http_request', async () => {
   // CLAUDE_PROJECT_DIR points at a different, empty folder (like a session
   // that started somewhere else). The server must still use the project vault.

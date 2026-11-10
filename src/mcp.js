@@ -86,17 +86,29 @@ export async function serveMcp() {
   // Which vault? BLIND_ENV_DIR if set. Otherwise the server's own folder
   // first (a project .mcp.json starts us there), then CLAUDE_PROJECT_DIR,
   // which can still point at the folder a session started in.
+  // BLIND_ENV_SKIP_DIR (set by the plugin to its own install folder) is never
+  // used: a vault must live in the user's project, not inside the plugin.
+  const norm = (d) => {
+    const p = path.resolve(d) + path.sep;
+    return process.platform === 'win32' ? p.toLowerCase() : p;
+  };
+  const skip = process.env.BLIND_ENV_SKIP_DIR ? norm(process.env.BLIND_ENV_SKIP_DIR) : null;
+  const usable = (d) => Boolean(d) && !(skip && norm(d).startsWith(skip));
+
   function locate() {
     if (process.env.BLIND_ENV_DIR) {
       return { file: Vault.find(process.env.BLIND_ENV_DIR), createIn: process.env.BLIND_ENV_DIR };
     }
-    const dirs = [process.cwd(), process.env.CLAUDE_PROJECT_DIR].filter(Boolean);
+    const dirs = [process.cwd(), process.env.CLAUDE_PROJECT_DIR].filter(usable);
     for (const dir of dirs) {
       const file = Vault.find(dir);
       if (file) return { file, createIn: dir };
     }
     return { file: null, createIn: dirs[0] };
   }
+  const NO_PROJECT =
+    'cannot tell which project folder to use. Start the session in your project folder, ' +
+    'or set BLIND_ENV_DIR for the blind-env server.';
   function openVault() {
     const { file } = locate();
     if (!file) throw new Error('there is no vault yet. Call add_key to create one.');
@@ -116,6 +128,7 @@ export async function serveMcp() {
   const handlers = {
     async list_keys() {
       const { file, createIn } = locate();
+      if (!file && !createIn) return NO_PROJECT;
       if (!file) return `There is no vault yet (add_key would create one in ${createIn}).`;
       const keys = Vault.load(file).list();
       if (!keys.length) return `Vault: ${file}\nThe vault is empty. Call add_key to add a secret.`;
@@ -136,6 +149,7 @@ export async function serveMcp() {
       // One window at a time.
       const turn = promptQueue.then(async () => {
         const { file, createIn } = locate();
+        if (!file && !createIn) throw new Error(NO_PROJECT);
         const created = !file;
         const vault = withKeyCache(file ? Vault.load(file) : Vault.init(createIn));
         const old = vault.entries.get(name);

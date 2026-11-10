@@ -51,6 +51,32 @@ DB_PASSWORD=enc:v1:Lw91…
 
 ## Install
 
+You need [Node.js](https://nodejs.org) 20 or newer.
+
+**For Claude Code** (MCP server plus the `/addKey` and `/keys` commands, in
+every project). Type this in Claude Code:
+
+```
+/plugin install blind-env --marketplace necromancer124/blind-env
+```
+
+On Claude Code older than 2.1.275, use two steps instead:
+
+```
+/plugin marketplace add necromancer124/blind-env
+/plugin install blind-env@blind-env
+```
+
+**For the command line:**
+
+```bash
+npm install -g blind-env
+```
+
+Or run it without installing: `npx blind-env help`.
+
+**From source:**
+
 ```bash
 git clone https://github.com/necromancer124/blind-env
 ```

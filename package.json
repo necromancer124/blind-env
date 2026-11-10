@@ -2,15 +2,40 @@
   "name": "blind-env",
   "version": "0.1.0",
   "description": "A .env file for AI agents: they can use secrets by name but never see the values.",
+  "keywords": [
+    "secrets",
+    "env",
+    "dotenv",
+    "ai",
+    "agents",
+    "mcp",
+    "claude",
+    "security",
+    "redaction"
+  ],
+  "homepage": "https://github.com/necromancer124/blind-env#readme",
+  "bugs": {
+    "url": "https://github.com/necromancer124/blind-env/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/necromancer124/blind-env.git"
+  },
+  "author": "necromancer124",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "blind-env": "src/cli.js"
   },
+  "files": [
+    "src/",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "test": "node --test"
   },
   "engines": {
     "node": ">=20"
-  },
-  "license": "MIT"
+  }
 }
