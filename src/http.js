@@ -1,0 +1,73 @@
+// Make a web request with secrets filled in by blind-env.
+//
+// The caller writes {{KEY_NAME}} in a header value or in the body. Each key
+// may only be sent to the hosts on its allow list, redirects are not followed,
+// and the response is redacted before it is returned.
+
+import { createRedactor } from './redact.js';
+import { hostAllowed } from './vault.js';
+
+const PLACEHOLDER = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+function namesIn(text) {
+  return [...String(text).matchAll(PLACEHOLDER)].map((m) => m[1]);
+}
+
+export async function httpRequest(vault, { url, method = 'GET', headers = {}, body, timeoutMs = 30_000, maxChars = 50_000 }) {
+  let target;
+  try {
+    target = new URL(url);
+  } catch {
+    throw new Error(`invalid url: ${url}`);
+  }
+  if (namesIn(url).length || /%7B%7B/i.test(url)) {
+    throw new Error('secrets are not allowed in the URL (URLs end up in logs). Put the key in a header or the body.');
+  }
+  if (target.protocol !== 'https:' && !(target.protocol === 'http:' && LOOPBACK.has(target.hostname))) {
+    throw new Error('only https:// URLs are allowed (http:// only for localhost)');
+  }
+
+  const used = new Set([...Object.values(headers).flatMap(namesIn), ...(body ? namesIn(body) : [])]);
+  for (const name of used) {
+    const entry = vault.entries.get(name);
+    if (!entry) throw new Error(`no key named ${name}`);
+    if (!hostAllowed(entry.allow, target.hostname)) {
+      const allowed = entry.allow.length ? entry.allow.join(', ') : 'no hosts yet';
+      throw new Error(
+        `BLOCKED: ${name} may not be sent to ${target.hostname} (allowed: ${allowed}). ` +
+          `Only the user can change this: blind-env allow ${name} ${target.hostname}`
+      );
+    }
+  }
+
+  const secrets = vault.reveal([...used]);
+  const fill = (text) => String(text).replace(PLACEHOLDER, (_, name) => secrets[name]);
+
+  const outHeaders = {};
+  for (const [k, v] of Object.entries(headers)) outHeaders[k] = fill(v);
+
+  const res = await fetch(target, {
+    method,
+    headers: outHeaders,
+    body: body === undefined ? undefined : fill(body),
+    redirect: 'manual',
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+
+  const redactor = createRedactor(secrets);
+  const text = redactor.all(await res.text());
+  const resHeaders = {};
+  for (const [k, v] of res.headers) resHeaders[k] = redactor.all(v);
+
+  return {
+    status: res.status,
+    headers: resHeaders,
+    body: text.length > maxChars ? text.slice(0, maxChars) : text,
+    truncated: text.length > maxChars,
+    note:
+      res.status >= 300 && res.status < 400
+        ? 'Redirects are not followed. If the new address is right, request it directly.'
+        : undefined,
+  };
+}

@@ -1,0 +1,11 @@
+{
+  "name": "blind-env",
+  "version": "0.1.0",
+  "description": "A .env file for AI agents: Claude can use your secrets by name but never sees the values.",
+  "mcpServers": {
+    "blind-env": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/src/cli.js", "mcp"]
+    }
+  }
+}

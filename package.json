@@ -1,0 +1,15 @@
+{
+  "name": "blind-env",
+  "version": "0.1.0",
+  "description": "A .env file for AI agents: they can use secrets by name but never see the values.",
+  "type": "module",
+  "bin": {
+    "blind-env": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
